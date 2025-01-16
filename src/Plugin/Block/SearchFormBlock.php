@@ -2,10 +2,12 @@
 
 namespace Drupal\ai_search_block\Plugin\Block;
 
+use Drupal\ai_chatbot\Form\ChatForm;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBuilderInterface;
+use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
@@ -319,9 +321,45 @@ The article(s) are:
 //        $block['#attached']['drupalSettings']['ai_search_block']['default_avatar'] = $this->fileUrlGenerator->generateAbsoluteString($userEntity->user_picture->entity->getFileUri());
 //      }
 //    }
-    return [
-      '#markup' => $this->t('Hello, AI World!'),
+    $block = [];
+    $form_state = new FormState();
+    $form_state->addBuildInfo('block_id', $this->getPluginId());
+    $form = $this->formBuilder->buildForm(ChatForm::class, $form_state);
+    $form['title'] = [
+      '#type' => 'textfield',
+      '#title' => '',
+      '#default_value' => '',
+      '#attributes' => [
+        'placeholder' => $this->configuration['placeholder'],
+      ],
+      '#required' => TRUE,
     ];
+    $form['submit'] = [
+      '#name' => 'change_connection_type',
+      '#type' => 'submit',
+      '#value' => $this->configuration['submit_text'],
+    ];
+
+    $block['#theme'] = 'ai_search_block';
+    //$block['#attached']['library'][] = 'ai_chatbot/chat';
+    $block['#header'] = $this->configuration['label'];
+    $block['#rendered_form'] = 'TEST';
+    $block['#output'] = 'OUTPUT';
+
+    // Set the settings first, since they are needed to render the message.
+//    $block['#attached']['drupalSettings']['ai_chatbot']['bot_name'] = $this->configuration['bot_name'];
+//    $block['#attached']['drupalSettings']['ai_chatbot']['bot_image'] = $this->configuration['bot_image'];
+//    $block['#attached']['drupalSettings']['ai_chatbot']['default_username'] = $username;
+//    $block['#attached']['drupalSettings']['ai_chatbot']['default_avatar'] = $avatar;
+//    $block['#attached']['drupalSettings']['ai_chatbot']['toggle_state'] = $this->configuration['toggle_state'];
+//    $block['#attached']['drupalSettings']['ai_chatbot']['output_type'] = $this->configuration['output_type'];
+//    $block['#attached']['drupalSettings']['ai_chatbot']['first_message'] = $this->configuration['first_message'];
+//    $block['#attached']['drupalSettings']['ai_chatbot']['has_history'] = $has_history;
+
+    return $block;
+//    return [
+//      '#markup' => $this->t('Hello, AI World!'),
+//    ];
     //return $block;
   }
 

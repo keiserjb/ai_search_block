@@ -1,1 +1,18 @@
 <?php
+/**
+ * @file
+ * Provides hook implementations for the AI Search blocm module.
+ */
+
+/**
+ * Implements hook_theme().
+ */
+function ai_search_block_theme() {
+  return [
+    'ai_search_block' => [
+      'variables' => [
+        'settings' => [],
+      ],
+    ],
+  ];
+}
