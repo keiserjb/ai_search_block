@@ -85,7 +85,14 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'submit_text' => 'Ask question',
       'stream' => TRUE,
       'database' => NULL,
-      'toggle_state' => 'remember',
+      'score_threshold' => 0.6,
+      'min_results' => 1,
+      'max_results' => 20,
+      'output_mode' => 'chunks',
+      'rendered_view_mode' => 'full',
+      'aggregated_llm' => NULL,
+      'access_check' => FALSE,
+      'context_threshold' => 0.1,
     ];
   }
 
@@ -97,19 +104,18 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       '#type' => 'fieldset',
       '#title' => $this->t('Form config'),
     ];
-    $form['form_config']['submit_text'] = [
-      '#type' => 'textfield',
-      '#title' => $this->t('The submit button text'),
-      '#description' => $this->t('The text in the submit button.'),
-      '#default_value' => $this->configuration['submit_text'],
-    ];
     $form['form_config']['placeholder'] = [
       '#type' => 'textfield',
       '#title' => $this->t('The placeholder in the form'),
       '#description' => $this->t('The first message to start things of.'),
       '#default_value' => $this->configuration['placeholder'],
     ];
-
+    $form['form_config']['submit_text'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('The submit button text'),
+      '#description' => $this->t('The text in the submit button.'),
+      '#default_value' => $this->configuration['submit_text'],
+    ];
     $form['form_config']['stream'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Stream'),
@@ -156,7 +162,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
         'placeholder' => 1,
       ],
     ];
-    $max_results = $this->configuration['rag']['max_results'];
+    $max_results = $this->configuration['max_results'];
     $max_results = $max_results ?? 5;
 
     $form['rag']['max_results'] = [
@@ -172,7 +178,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       '#type' => 'select',
       '#title' => $this->t('RAG context mode'),
       '#description' => $this->t('The context mode for the list given to the Assistant. <br>The <strong>chunk mode</strong> will return the chunk as they are and the LLM will act on this - if chunked correctly this produces very quick answer for chatbots that needs to answer quickly.<br>If you return <strong>aggregated and rendered entities</strong>, there will be an LLM agent first checking each of the answers over the whole entity, and then return an aggregated answer to the Assistant. This is slower, but more accurate.'),
-      '#default_value' => $this->configuration['rag']['output_mode'],
+      '#default_value' => $this->configuration['output_mode'],
       '#options' => [
         'chunks' => $this->t('Chunks'),
         'rendered' => $this->t('Aggregated and Rendered entities'),
@@ -211,7 +217,7 @@ The article(s) are:
       '#type' => 'textarea',
       '#title' => $this->t('RAG LLM Agent'),
       '#description' => $this->t('With Aggregated and Rendered entities, this agent will take each of the entities returned and create one summarized answer to feed to the assistant. This can take the tokens [question] and [entity] or even specific tokens from the entity below. If multiple results are found the [entity] will be replaced with the contents of multiple results separated by --------- and new lines.'),
-      '#default_value' => $this->configuration['rag']['aggregated_llm'] ?? $default_prompt,
+      '#default_value' => $this->configuration['aggregated_llm'] ?? $default_prompt,
       '#attributes' => [
         'rows' => 10,
         'placeholder' => $default_prompt,
@@ -227,14 +233,14 @@ The article(s) are:
       '#type' => 'checkbox',
       '#title' => $this->t('RAG access check'),
       '#description' => $this->t('With this enabled the system will do a post query access check on every chunk to see if the user has access to that content. Note that this might lead to no results and be slower, but it makes sure that none-accessible items are not reached. This is done before the Assistant prompt, so its secure to prompt injection.'),
-      '#default_value' => $this->configuration['rag']['access_check'],
+      '#default_value' => $this->configuration['access_check'],
     ];
 
     $form['rag']['context_threshold'] = [
       '#type' => 'number',
       '#title' => $this->t('Context threshold'),
       '#description' => $this->t('This is the threshold that the answer have to meet to be thought of as a valid response in context. Note that the similarity value is generally lower on a specific question in context, so lower values are needed.'),
-      '#default_value' => $this->configuration['rag']['context_threshold'],
+      '#default_value' => $this->configuration['context_threshold'],
       '#attributes' => [
         'placeholder' => 0.1,
       ],
@@ -269,43 +275,54 @@ The article(s) are:
    * {@inheritdoc}
    */
   public function blockSubmit($form, FormStateInterface $form_state) {
-    $this->configuration['placeholder'] = $form_state->getValue('placeholder');
-    $this->configuration['submit_text'] = $form_state->getValue('submit_text');
-    $this->configuration['stream'] = $form_state->getValue('stream');
+    $this->configuration['placeholder'] = $form_state->getValue('form_config')['placeholder'];
+    $this->configuration['submit_text'] = $form_state->getValue('form_config')['submit_text'];
+    $this->configuration['stream'] = $form_state->getValue('form_config')['stream'];
+    $this->configuration['database'] = $form_state->getValue('source_data')['database'];
+    $this->configuration['score_threshold'] = $form_state->getValue('rag')['score_threshold'];
+    $this->configuration['min_results'] = $form_state->getValue('rag')['min_results'];
+    $this->configuration['max_results'] = $form_state->getValue('rag')['max_results'];
+    $this->configuration['output_mode'] = $form_state->getValue('rag')['output_mode'];
+    $this->configuration['rendered_view_mode'] = $form_state->getValue('rag')['rendered_view_mode'];
+    $this->configuration['aggregated_llm'] = $form_state->getValue('rag')['aggregated_llm'];
+    $this->configuration['access_check'] = $form_state->getValue('rag')['access_check'];
+    $this->configuration['context_threshold'] = $form_state->getValue('rag')['context_threshold'];
   }
 
   /**
    * {@inheritdoc}
    */
   public function build() {
-    $assistant = $this->entityTypeManager->getStorage('ai_assistant')->load($this->configuration['ai_assistant']);
-    $this->aiAssistantRunner->setAssistant($assistant);
-    // Check if the assistant is setup and that the user has access to it.
-    if (!$this->aiAssistantRunner->isSetup() || !$this->aiAssistantRunner->userHasAccess()) {
-      return [];
-    }
-    $this->aiAssistantRunner->streamedOutput($this->configuration['stream']);
-    $block = [];
-
-    $block['#theme'] = 'ai_search_block';
-    $block['#attached']['library'][] = 'ai_search_block/chat';
-    $block['#settings'] = $this->configuration;
-    $block['#attached']['drupalSettings']['ai_search_block']['placeholder'] = $this->configuration['placeholder'];
-    $block['#attached']['drupalSettings']['ai_search_block']['submit_text'] = $this->configuration['submit_text'];
-    $user = $this->currentUser->getAccount();
-    // Override username if the user is authenticated and configured.
-    if ($user->isAuthenticated() && $this->configuration['use_username']) {
-      $block['#attached']['drupalSettings']['ai_search_block']['default_username'] = $user->getDisplayName();
-    }
-    // Override avatar if the user is authenticated and configured and exist.
-    if ($user->isAuthenticated() && $this->configuration['use_avatar']) {
-      $userEntity = $this->entityTypeManager->getStorage('user')->load($user->id());
-      if (!empty($userEntity->user_picture->entity)) {
-        $block['#attached']['drupalSettings']['ai_search_block']['default_avatar'] = $this->fileUrlGenerator->generateAbsoluteString($userEntity->user_picture->entity->getFileUri());
-      }
-    }
-
-    return $block;
+//    $assistant = $this->entityTypeManager->getStorage('ai_assistant')->load($this->configuration['ai_assistant']);
+//    $this->aiAssistantRunner->setAssistant($assistant);
+//    // Check if the assistant is setup and that the user has access to it.
+//    if (!$this->aiAssistantRunner->isSetup() || !$this->aiAssistantRunner->userHasAccess()) {
+//      return [];
+//    }
+//    $this->aiAssistantRunner->streamedOutput($this->configuration['stream']);
+//    $block = [];
+//
+//    $block['#theme'] = 'ai_search_block';
+//    $block['#attached']['library'][] = 'ai_search_block/chat';
+//    $block['#settings'] = $this->configuration;
+//    $block['#attached']['drupalSettings']['ai_search_block']['placeholder'] = $this->configuration['placeholder'];
+//    $block['#attached']['drupalSettings']['ai_search_block']['submit_text'] = $this->configuration['submit_text'];
+//    $user = $this->currentUser->getAccount();
+//    // Override username if the user is authenticated and configured.
+//    if ($user->isAuthenticated() && $this->configuration['use_username']) {
+//      $block['#attached']['drupalSettings']['ai_search_block']['default_username'] = $user->getDisplayName();
+//    }
+//    // Override avatar if the user is authenticated and configured and exist.
+//    if ($user->isAuthenticated() && $this->configuration['use_avatar']) {
+//      $userEntity = $this->entityTypeManager->getStorage('user')->load($user->id());
+//      if (!empty($userEntity->user_picture->entity)) {
+//        $block['#attached']['drupalSettings']['ai_search_block']['default_avatar'] = $this->fileUrlGenerator->generateAbsoluteString($userEntity->user_picture->entity->getFileUri());
+//      }
+//    }
+    return [
+      '#markup' => $this->t('Hello, AI World!'),
+    ];
+    //return $block;
   }
 
   /**
