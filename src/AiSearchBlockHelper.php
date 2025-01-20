@@ -1,0 +1,262 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Drupal\ai_search_block;
+
+use Drupal\ai\AiProviderPluginManager;
+use Drupal\ai\OperationType\Chat\ChatInput;
+use Drupal\ai\OperationType\Chat\ChatMessage;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+
+use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\Render\RendererInterface;
+use Drupal\Core\TempStore\PrivateTempStoreFactory;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use League\HTMLToMarkdown\Converter\TableConverter;
+use League\HTMLToMarkdown\HtmlConverter;
+
+/**
+ * The OpenAI API wrapper class for interacting with the client.
+ */
+class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
+
+  use StringTranslationTrait;
+
+  /**
+   * The OpenAI client.
+   *
+   * @var \OpenAI\Client
+   */
+  protected $client;
+
+  /**
+   * The cache backend service.
+   *
+   * @var \Drupal\Core\Cache\CacheBackendInterface
+   */
+  protected $cache;
+
+  /**
+   * The logger channel factory service.
+   *
+   * @var \Drupal\Core\Logger\LoggerChannelInterface
+   */
+  protected $logger;
+
+  public function __construct( protected PrivateTempStoreFactory $tmpStore,
+                               protected EntityTypeManagerInterface $entityTypeManager,
+                               protected RendererInterface $renderer,
+                               protected HtmlConverter $converter,
+                               protected AiProviderPluginManager $aiProviderManager,
+  ) {
+
+    // Set the default converter settings.
+    $this->converter->getConfig()->setOption('strip_tags', TRUE);
+    $this->converter->getConfig()->setOption('strip_placeholder_links', TRUE);
+    $this->converter->getEnvironment()->addConverter(new TableConverter());
+    //parent::__construct();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static(
+      $container->get('tempstore.private'),
+      $container->get('entity_type.manager'),
+      $container->get('renderer'),
+      new HtmlConverter(),
+      $container->get('ai.provider'),
+    );
+  }
+
+
+  /**
+   *
+   */
+  public function setConfig($config){
+    $this->configuration = $config;
+  }
+  /**
+   * Take rag action.
+   */
+  public function searchRagAction($query) {
+    // Fall Use the default RAG database from this plugin configuration.
+    if (!empty($this->configuration['database'])) {
+      $rag_database = $this->configuration;
+    }
+
+    if (!isset($rag_database)) {
+      $this->setOutputContext('rag', 'No RAG database found.');
+      return;
+    }
+    $results = $this->getRagResults($rag_database, $query);
+    // Get the results we are interested in as a string.
+    return $this->renderRagResponseAsString($results, $query, $rag_database);
+  }
+
+  /**
+   * @param $type
+   * @param $msg
+   *
+   * @return mixed
+   */
+  private function setOutputContext($type, $msg){
+    return $msg;
+  }
+
+
+  /**
+   * Full entity check with a LLM checking the rendered entity.
+   *
+   * @param \Drupal\search_api\Item\ItemInterface[] $result_items
+   *   The result to check.
+   * @param string $query_string
+   *   The query to search for.
+   * @param array $rag_database
+   *   The RAG database array data.
+   *
+   * @return string
+   *   The response.
+   */
+  protected function fullEntityCheck(array $result_items, string $query_string, array $rag_database): string {
+    $rendered_entities = [];
+    foreach ($result_items as $result) {
+      $entity_string = $result->getExtraData('drupal_entity_id');
+      // Load the entity from search api key.
+      // @todo probably exists a function for this.
+      [, $entity_parts, $lang] = explode(':', $entity_string);
+      [$entity_type, $entity_id] = explode('/', $entity_parts);
+      /** @var \Drupal\Core\Entity\ContentEntityBase */
+      $entity = $this->entityTypeManager->getStorage($entity_type)->load($entity_id);
+
+      // Get translated if possible.
+      if (
+        $entity instanceof TranslatableInterface
+        && $entity->language()->getId() !== $lang
+        && $entity->hasTranslation($lang)
+      ) {
+        $entity = $entity->getTranslation($lang);
+      }
+
+      // Render the entity in selected view mode.
+
+      $view_mode = $this->configuration['aggregated_llm'] ?? 'full';
+      $pre_render_entity = $this->entityTypeManager->getViewBuilder($entity_type)->view($entity, $view_mode);
+      $rendered = $this->renderer->render($pre_render_entity);
+      $rendered_entities[] = $this->converter->convert((string) $rendered);
+    }
+    $message = str_replace([
+      '[question]',
+      '[entity]',
+    ], [
+      $query_string,
+      implode("\n------------\n", $rendered_entities),
+    ], nl2br($this->configuration['aggregated_llm']));
+
+    // Now we have the entity, we can check it with the LLM.
+    $ai_provider_model = $this->configuration['llm_model'];
+
+    if ($ai_provider_model === '') {
+      $default_provider = $this->aiProviderManager->getDefaultProviderForOperationType('chat');
+      $ai_provider_model = $default_provider['provider_id'] . '__' . $default_provider['model_id'];
+      $ai_model_to_use = $default_provider['model_id'];
+    }else{
+      $parts = explode('__', $ai_provider_model);
+      $ai_model_to_use = $parts[1];
+    }
+
+    $provider = $this->aiProviderManager->loadProviderFromSimpleOption($ai_provider_model);
+    $config = [];
+    foreach ($this->configuration as $key => $val) {
+      $config[$key] = $val;
+    }
+    //$provider->setConfiguration($config);
+    $input = new ChatInput([
+      new ChatMessage('user', $message),
+    ]);
+    $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
+    $response = $output->getNormalized()->getText() . "\n";
+    return $response;
+  }
+
+
+  /**
+   * Process RAG.
+   *
+   * @param array $rag_database
+   *   The RAG database array data.
+   * @param string $query_string
+   *   The query to search for (optional).
+   *
+   * @return \Drupal\search_api\Query\ResultSetInterface
+   *   The RAG response.
+   */
+  protected function getRagResults(array $rag_database, string $query_string = '') {
+    /** @var \Drupal\search_api\Entity\Index */
+    $rag_storage = $this->entityTypeManager->getStorage('search_api_index');
+    // Get the index.
+    $index = $rag_storage->load($rag_database['database']);
+    if (!$index) {
+      throw new \Exception('RAG database not found.');
+    }
+
+    // Then we try to search.
+    try {
+      $query = $index->query([
+        'limit' => $this->configuration['max_results'],
+      ]);
+      $query->setOption('search_api_bypass_access', !$this->configuration['access_check']);
+      $query->setOption('search_api_ai_get_chunks_result', $this->configuration['output_mode'] == 'chunks');
+      $queries = $query_string;
+      $query->keys($queries);
+      $results = $query->execute();
+    }
+    catch (\Exception $e) {
+      throw new \Exception('Failed to search: ' . $e->getMessage());
+    }
+    return $results;
+  }
+
+  /**
+   * Render the RAG response as string.
+   *
+   * @param \Drupal\search_api\Query\ResultSet $results
+   *   The RAG results.
+   * @param string $query
+   *   The query to search for (optional).
+   * @param array $rag_database
+   *   The RAG database array data.
+   *
+   * @return string
+   *   The RAG response.
+   */
+  protected function renderRagResponseAsString($results, string $query, array $rag_database) {
+    $response = '';
+    $result_items = [];
+    foreach ($results->getResultItems() as $result) {
+      // Filter the results.
+      if ($this->configuration['score_threshold'] > $result->getScore()) {
+        continue;
+      }
+
+      $result_items[] = $result;
+
+      // Chunked mode is easy.
+      if ($this->configuration['output_mode'] == 'chunks') {
+        $response .= $result->getExtraData('content') . "\n\n";
+      }
+    }
+    // For the full entity check, we make a single subsequent chat call to
+    // have the LLM extract relevant data for the conversation based on the
+    // question the user asked.
+    if ($this->configuration['output_mode'] === 'rendered' && !empty($result_items)) {
+      $response .= $this->fullEntityCheck($result_items, $query, $rag_database);
+    }
+    return $response;
+  }
+
+}

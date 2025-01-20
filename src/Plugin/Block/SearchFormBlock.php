@@ -2,7 +2,7 @@
 
 namespace Drupal\ai_search_block\Plugin\Block;
 
-use Drupal\ai_chatbot\Form\ChatForm;
+use Drupal\ai_search_block\Form\SearchForm;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -11,6 +11,7 @@ use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Url;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -66,6 +67,12 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
   protected $entityDisplayRepository;
 
   /**
+   * @var
+   *   The ai provider manager.
+   */
+  protected $aiProviderManager;
+
+  /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
@@ -75,6 +82,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
     $plugin->currentUser = $container->get('current_user');
     $plugin->fileUrlGenerator = $container->get('file_url_generator');
     $plugin->entityDisplayRepository = $container->get('entity_display.repository');
+    $plugin->aiProviderManager = $container->get('ai.provider');
     return $plugin;
   }
 
@@ -85,6 +93,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
     return [
       'placeholder' => 'Ask me a question about your subject here!',
       'submit_text' => 'Ask question',
+      'loading_text' => 'Loading',
       'stream' => TRUE,
       'database' => NULL,
       'score_threshold' => 0.6,
@@ -92,6 +101,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'max_results' => 20,
       'output_mode' => 'chunks',
       'rendered_view_mode' => 'full',
+      'llm_model' => NULL,
       'aggregated_llm' => NULL,
       'access_check' => FALSE,
       'context_threshold' => 0.1,
@@ -117,6 +127,18 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       '#title' => $this->t('The submit button text'),
       '#description' => $this->t('The text in the submit button.'),
       '#default_value' => $this->configuration['submit_text'],
+    ];
+    $form['form_config']['loading_text'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('The "Loading" text'),
+      '#description' => $this->t('The text one sees while waiting for the result'),
+      '#default_value' => $this->configuration['loading_text'],
+    ];
+    $form['form_config']['suffix_text'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('The "Suffix" text'),
+      '#description' => $this->t('The text one sees below the results. This may be html'),
+      '#default_value' => $this->configuration['suffix_text'],
     ];
     $form['form_config']['stream'] = [
       '#type' => 'checkbox',
@@ -201,19 +223,47 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       ],
     ];
 
-    $default_prompt = $this->t('Can you summarize if the following article(s) are relevant to the question?
-If it is not, please just answer "no answer".
-If it is, answer with the details that are needed to answer this from a larger perspective.
+    $llm_model_options = $this->aiProviderManager->getSimpleProviderModelOptions('chat');
+    array_shift($llm_model_options);
+    array_splice($llm_model_options, 0, 1);
+    $form['rag']['llm_model'] = [
+      '#type' => 'select',
+      "#empty_option" => $this->t('-- Default from AI module (chat) --'),
+      '#title' => $this->t('RAG LLM Model'),
+      '#default_value' => $this->configuration['llm_model'],
+      '#options' => $llm_model_options,
+      '#description' => $this->t('Select which provider to use for this plugin. See the <a href=":link">Provider overview</a> for details about each provider.', [':link' => '/admin/config/ai/providers']),
+    ];
 
-The question is:
+    $default_prompt = $this->t('Answer the users question (see QUESTION) using the articles below (See ARTICLES).
+Your first language is dutch. iF the user asks the question in another language you may switch to that language.
+Never repeat the question. no pleasantries, just a dry response based on the articles.
+Always add the URI to the used resource in the snippet or below the response.
+
+QUESTION:
 -----------------------
 [question]
 -----------------------
 
-The article(s) are:
+ARTICLES:
 -----------------------
 [entity]
------------------------');
+-----------------------
+
+Conserning the output format:
+The articles are formatted as Markdown. Transform this to HTML.
+You can use simple HTML structures like <b><h3><i><li> and <a>.
+Wrap links in a <a> element, return lists in a <ul><li>
+You can also reformat Markdown as HTML.
+Always add the URI to the used resource in the snippet or below the response.
+
+Example response:
+```html
+<h3>Example title<h3>
+<p>This is a textual rsponse with a <a href="">link</a>.<p>
+```
+');
+
 
     $form['rag']['aggregated_llm'] = [
       '#type' => 'textarea',
@@ -255,8 +305,6 @@ The article(s) are:
         ],
       ],
     ];
-
-
     return $form;
   }
 
@@ -280,6 +328,8 @@ The article(s) are:
     $this->configuration['placeholder'] = $form_state->getValue('form_config')['placeholder'];
     $this->configuration['submit_text'] = $form_state->getValue('form_config')['submit_text'];
     $this->configuration['stream'] = $form_state->getValue('form_config')['stream'];
+    $this->configuration['loading_text'] = $form_state->getValue('form_config')['loading_text'];
+    $this->configuration['suffix_text'] = $form_state->getValue('form_config')['suffix_text'];
     $this->configuration['database'] = $form_state->getValue('source_data')['database'];
     $this->configuration['score_threshold'] = $form_state->getValue('rag')['score_threshold'];
     $this->configuration['min_results'] = $form_state->getValue('rag')['min_results'];
@@ -289,6 +339,29 @@ The article(s) are:
     $this->configuration['aggregated_llm'] = $form_state->getValue('rag')['aggregated_llm'];
     $this->configuration['access_check'] = $form_state->getValue('rag')['access_check'];
     $this->configuration['context_threshold'] = $form_state->getValue('rag')['context_threshold'];
+    $this->configuration['llm_model'] = $form_state->getValue('rag')['llm_model'];
+
+    //llm_model
+    if(method_exists($form_state->getBuildInfo()['callback_object'], 'getEntity')) {
+      // Likely this is the stock drupal block layout config.
+      $this->configuration['block_id'] = $form_state->getBuildInfo()['callback_object']->getEntity()->id();
+      $this->configuration['block_offset'] = '';
+    }
+    else {
+      /** @var \Drupal\layout_builder\Form\UpdateBlockForm */
+      $callback_obj = $form_state->getBuildInfo()['callback_object'];
+      // Likely this is Layout builder
+      $current_component = $callback_obj->getCurrentComponent();
+      $uuid = $current_component->getUuid();
+      $region = $current_component->getRegion();
+      $weight =  $current_component->getWeight();
+
+      $layout_offset = $weight . '/' . $region;
+
+      $this->configuration['block_id'] = $uuid;
+      $this->configuration['block_offset'] = $layout_offset;
+    }
+
   }
 
   /**
@@ -302,13 +375,18 @@ The article(s) are:
 //      return [];
 //    }
 //    $this->aiAssistantRunner->streamedOutput($this->configuration['stream']);
-//    $block = [];
-//
-//    $block['#theme'] = 'ai_search_block';
-//    $block['#attached']['library'][] = 'ai_search_block/chat';
-//    $block['#settings'] = $this->configuration;
+    $block = [];
+    $block['#settings'] = $this->configuration;
 //    $block['#attached']['drupalSettings']['ai_search_block']['placeholder'] = $this->configuration['placeholder'];
-//    $block['#attached']['drupalSettings']['ai_search_block']['submit_text'] = $this->configuration['submit_text'];
+    $url = Url::fromRoute('ai_search_block.api', [], ['absolute' => FALSE]);
+    $block['#attached']['drupalSettings']['ai_search_block']['submit_url'] = $url->toString();
+
+    if(!isset($this->configuration['loading_text'])) {
+
+    }
+    $block['#attached']['drupalSettings']['ai_search_block']['loading_text'] = $this->configuration['loading_text'];
+    $block['#attached']['drupalSettings']['ai_search_block']['suffix_text'] = $this->configuration['suffix_text'];
+
 //    $user = $this->currentUser->getAccount();
 //    // Override username if the user is authenticated and configured.
 //    if ($user->isAuthenticated() && $this->configuration['use_username']) {
@@ -321,46 +399,27 @@ The article(s) are:
 //        $block['#attached']['drupalSettings']['ai_search_block']['default_avatar'] = $this->fileUrlGenerator->generateAbsoluteString($userEntity->user_picture->entity->getFileUri());
 //      }
 //    }
-    $block = [];
     $form_state = new FormState();
-    $form_state->addBuildInfo('block_id', $this->getPluginId());
-    $form = $this->formBuilder->buildForm(ChatForm::class, $form_state);
-    $form['title'] = [
-      '#type' => 'textfield',
-      '#title' => '',
-      '#default_value' => '',
-      '#attributes' => [
-        'placeholder' => $this->configuration['placeholder'],
-      ],
-      '#required' => TRUE,
-    ];
-    $form['submit'] = [
-      '#name' => 'change_connection_type',
-      '#type' => 'submit',
-      '#value' => $this->configuration['submit_text'],
-    ];
-
-    $block['#theme'] = 'ai_search_block';
-    //$block['#attached']['library'][] = 'ai_chatbot/chat';
-    $block['#header'] = $this->configuration['label'];
-    $block['#rendered_form'] = 'TEST';
-    $block['#output'] = 'OUTPUT';
-
+    $form_state
+      ->addBuildInfo('block_id', $this->getPluginId())
+      ->addBuildInfo('search_config', $this->configuration)
+    ;
+    $form = $this->formBuilder->buildForm(SearchForm::class, $form_state);
+    $block['#theme'] = 'ai_search_block_wrapper';
+    $block['#attached']['library'][] = 'ai_search_block/ai_search_block';
+    $block['#rendered_form'] = $form;
+    $block['#cache']['max-age'] = 0;
+    $block['#output'] = ' ';
     // Set the settings first, since they are needed to render the message.
 //    $block['#attached']['drupalSettings']['ai_chatbot']['bot_name'] = $this->configuration['bot_name'];
 //    $block['#attached']['drupalSettings']['ai_chatbot']['bot_image'] = $this->configuration['bot_image'];
 //    $block['#attached']['drupalSettings']['ai_chatbot']['default_username'] = $username;
 //    $block['#attached']['drupalSettings']['ai_chatbot']['default_avatar'] = $avatar;
 //    $block['#attached']['drupalSettings']['ai_chatbot']['toggle_state'] = $this->configuration['toggle_state'];
-//    $block['#attached']['drupalSettings']['ai_chatbot']['output_type'] = $this->configuration['output_type'];
+//    $block['#attached']['drupalSettings']['ai_chatbot']['output_type'] =fgetCacheMaxAge $this->configuration['output_type'];
 //    $block['#attached']['drupalSettings']['ai_chatbot']['first_message'] = $this->configuration['first_message'];
 //    $block['#attached']['drupalSettings']['ai_chatbot']['has_history'] = $has_history;
-
     return $block;
-//    return [
-//      '#markup' => $this->t('Hello, AI World!'),
-//    ];
-    //return $block;
   }
 
   /**

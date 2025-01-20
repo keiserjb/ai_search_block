@@ -1,0 +1,9 @@
+ai_search_block:
+  version: 1.x
+  css:
+    theme:
+      css/ai_search_block.css: {}
+  js:
+    js/ai_search_block.js: {}
+  dependencies:
+    - core/jquery
