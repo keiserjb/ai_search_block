@@ -28,9 +28,9 @@ class SearchForm extends FormBase {
   /**
    * Construct the chat.
    *
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   * @param EntityTypeManagerInterface $entityTypeManager
    *   The entity type manager.
-   * @param \Drupal\Core\Routing\RouteMatchInterface $routeMatcher
+   * @param RouteMatchInterface $routeMatcher
    *   The route match.
    */
   public function __construct(
@@ -66,19 +66,12 @@ class SearchForm extends FormBase {
       $context[$key] = $this->routeMatcher->getParameter($key);
     }
 
-    //$form_state->getValue('search_config')['placeholder'];
-    // Setup the assistant.
-    //$this->aiAssistantRunner->setContext($context);
-
-    if (!$this->getRequest()->isXmlHttpRequest()) {
-      // Set the assistant id if its the page load.
-//      $form['#attached']['drupalSettings']['ai_chatbot']['assistant_id'] = $this->aiAssistantRunner->getAssistant()->id();
-//      $form['#attached']['drupalSettings']['ai_chatbot']['thread_id'] = $this->aiAssistantRunner->getThreadsKey();
-    }
+//    if (!$this->getRequest()->isXmlHttpRequest()) {
+//      // Set the assistant id if its the page load.
+//    }
 
     $response_id = Html::getId($form_state->getBuildInfo()['block_id'] . '-response');
     $search_block_config = $form_state->getBuildInfo()['search_config'];
-    //$search_block_id = $form_state->getBuildInfo()['block_id'];
 
     $form['stream'] = [
       '#type' => 'hidden',
@@ -121,22 +114,6 @@ class SearchForm extends FormBase {
     ];
     return $form;
   }
-
-//  public function setMessage(array $form, FormStateInterface $form_state) {
-//
-//    $search_block_config = $form_state->getBuildInfo()['search_config'];
-//    $database = $search_block_config['database'];
-//
-//    dd($database);
-//
-//    $response = new AjaxResponse();
-//    $response->addCommand(
-//      new HtmlCommand(
-//        '.ai_searh_block_result_message',
-//        '<div class="my_top_message">' . t('The results is @result', ['@result' => ($form_state->getValue('number_1') + $form_state->getValue('number_2'))]) . '</div>'),
-//    );
-//    return $response;
-//  }
 
   /**
    * {@inheritdoc}
@@ -210,7 +187,7 @@ class SearchForm extends FormBase {
   /**
    * Get all the Chat config from build info with defaults.
    *
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   * @param FormStateInterface $form_state
    *   The form state to get build info from.
    *
    * @return array

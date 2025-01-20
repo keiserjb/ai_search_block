@@ -8,51 +8,38 @@ use Drupal\ai\AiProviderPluginManager;
 use Drupal\ai\OperationType\Chat\ChatInput;
 use Drupal\ai\OperationType\Chat\ChatMessage;
 use Drupal\ai\OperationType\Chat\StreamedChatMessageIteratorInterface;
+use Drupal\Core\Cache\CacheBackendInterface;
+use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\TempStore\PrivateTempStoreFactory;
+use Drupal\search_api\Entity\Index;
+use Drupal\search_api\Item\ItemInterface;
+use Drupal\search_api\Query\ResultSet;
+use Drupal\search_api\Query\ResultSetInterface;
+use Exception;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use League\HTMLToMarkdown\Converter\TableConverter;
 use League\HTMLToMarkdown\HtmlConverter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * The OpenAI API wrapper class for interacting with the client.
+ * The Helper service to do RA stuff.
  */
-class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
+class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
 
   use StringTranslationTrait;
 
-  /**
-   * The OpenAI client.
-   *
-   * @var \OpenAI\Client
-   */
-  protected $client;
-
-  /**
-   * The cache backend service.
-   *
-   * @var \Drupal\Core\Cache\CacheBackendInterface
-   */
-  protected $cache;
-
-  /**
-   * The logger channel factory service.
-   *
-   * @var \Drupal\Core\Logger\LoggerChannelInterface
-   */
-  protected $logger;
-
-  public function __construct( protected PrivateTempStoreFactory $tmpStore,
-                               protected EntityTypeManagerInterface $entityTypeManager,
-                               protected RendererInterface $renderer,
-                               protected HtmlConverter $converter,
-                               protected AiProviderPluginManager $aiProviderManager,
+  public function __construct(protected PrivateTempStoreFactory    $tmpStore,
+                              protected EntityTypeManagerInterface $entityTypeManager,
+                              protected RendererInterface          $renderer,
+                              protected HtmlConverter              $converter,
+                              protected AiProviderPluginManager    $aiProviderManager,
   ) {
 
     // Set the default converter settings.
@@ -79,9 +66,10 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
   /**
    *
    */
-  public function setConfig($config){
+  public function setConfig($config) {
     $this->configuration = $config;
   }
+
   /**
    * Take rag action.
    */
@@ -106,7 +94,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
    *
    * @return mixed
    */
-  private function setOutputContext($type, $msg){
+  private function setOutputContext($type, $msg) {
     return $msg;
   }
 
@@ -114,7 +102,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
   /**
    * Full entity check with a LLM checking the rendered entity.
    *
-   * @param \Drupal\search_api\Item\ItemInterface[] $result_items
+   * @param ItemInterface[] $result_items
    *   The result to check.
    * @param string $query_string
    *   The query to search for.
@@ -132,7 +120,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
       // @todo probably exists a function for this.
       [, $entity_parts, $lang] = explode(':', $entity_string);
       [$entity_type, $entity_id] = explode('/', $entity_parts);
-      /** @var \Drupal\Core\Entity\ContentEntityBase */
+      /** @var ContentEntityBase */
       $entity = $this->entityTypeManager->getStorage($entity_type)->load($entity_id);
 
       // Get translated if possible.
@@ -149,7 +137,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
       $view_mode = $this->configuration['aggregated_llm'] ?? 'full';
       $pre_render_entity = $this->entityTypeManager->getViewBuilder($entity_type)->view($entity, $view_mode);
       $rendered = $this->renderer->render($pre_render_entity);
-      $rendered_entities[] = $this->converter->convert((string) $rendered);
+      $rendered_entities[] = $this->converter->convert((string)$rendered);
     }
     $message = str_replace([
       '[question]',
@@ -166,7 +154,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
       $default_provider = $this->aiProviderManager->getDefaultProviderForOperationType('chat');
       $ai_provider_model = $default_provider['provider_id'] . '__' . $default_provider['model_id'];
       $ai_model_to_use = $default_provider['model_id'];
-    }else{
+    }
+    else {
       $parts = explode('__', $ai_provider_model);
       $ai_model_to_use = $parts[1];
     }
@@ -189,7 +178,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
         return new StreamedResponse(function () use ($response) {
           foreach ($response as $message) {
             $item = [];
-            $item['in_html'] = false;
+            $item['in_html'] = FALSE;
             $item['answer_piece'] = $message->getText();
             $out = json_encode($item);
             unset($item);
@@ -203,12 +192,14 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
           'Content-Type' => 'text/event-stream',
           'X-Accel-Buffering' => 'no',
         ]);
-      }else{
+      }
+      else {
         $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
         $response = $output->getNormalized()->getText() . "\n";
         return $response;
       }
-    }else{
+    }
+    else {
       $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
       $response = $output->getNormalized()->getText() . "\n";
       return $response;
@@ -224,16 +215,16 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
    * @param string $query_string
    *   The query to search for (optional).
    *
-   * @return \Drupal\search_api\Query\ResultSetInterface
+   * @return ResultSetInterface
    *   The RAG response.
    */
   protected function getRagResults(array $rag_database, string $query_string = '') {
-    /** @var \Drupal\search_api\Entity\Index */
+    /** @var Index */
     $rag_storage = $this->entityTypeManager->getStorage('search_api_index');
     // Get the index.
     $index = $rag_storage->load($rag_database['database']);
     if (!$index) {
-      throw new \Exception('RAG database not found.');
+      throw new Exception('RAG database not found.');
     }
 
     // Then we try to search.
@@ -247,8 +238,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
       $query->keys($queries);
       $results = $query->execute();
     }
-    catch (\Exception $e) {
-      throw new \Exception('Failed to search: ' . $e->getMessage());
+    catch (Exception $e) {
+      throw new Exception('Failed to search: ' . $e->getMessage());
     }
     return $results;
   }
@@ -256,7 +247,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
   /**
    * Render the RAG response as string.
    *
-   * @param \Drupal\search_api\Query\ResultSet $results
+   * @param ResultSet $results
    *   The RAG results.
    * @param string $query
    *   The query to search for (optional).

@@ -2,16 +2,20 @@
 
 namespace Drupal\ai_search_block\Plugin\Block;
 
+use Drupal\ai_assistant_api\AiAssistantApiRunner;
 use Drupal\ai_search_block\Form\SearchForm;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\File\FileUrlGenerator;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\Url;
+use Drupal\layout_builder\Form\UpdateBlockForm;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -28,40 +32,40 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
   /**
    * The entity type manager.
    *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   * @var EntityTypeManagerInterface
    */
   protected EntityTypeManagerInterface $entityTypeManager;
 
   /**
    * The form builder.
    *
-   * @var \Drupal\Core\Form\FormBuilderInterface
+   * @var FormBuilderInterface
    */
   protected FormBuilderInterface $formBuilder;
 
   /**
    * Current user.
    *
-   * @var \Drupal\Core\Session\AccountProxyInterface
+   * @var AccountProxyInterface
    */
   protected $currentUser;
 
   /**
    * The AI Assistant API runner.
    *
-   * @var \Drupal\ai_assistant_api\AiAssistantApiRunner
+   * @var AiAssistantApiRunner
    */
   protected $aiAssistantRunner;
 
   /**
    * The file url generator.
    *
-   * @var \Drupal\Core\File\FileUrlGenerator
+   * @var FileUrlGenerator
    */
   protected $fileUrlGenerator;
 
   /**
-   * @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface
+   * @var EntityDisplayRepositoryInterface
    *   The entity display repository.
    */
   protected $entityDisplayRepository;
@@ -317,7 +321,7 @@ Example response:
     $indices = $this->entityTypeManager->getStorage('search_api_index')->loadMultiple();
     foreach ($indices as $index) {
       $databases[$index->id()] = $index->label() . ' (' . $index->id() . ')';
-    };
+    }
     return $databases;
   }
 
@@ -342,19 +346,19 @@ Example response:
     $this->configuration['llm_model'] = $form_state->getValue('rag')['llm_model'];
 
     //llm_model
-    if(method_exists($form_state->getBuildInfo()['callback_object'], 'getEntity')) {
+    if (method_exists($form_state->getBuildInfo()['callback_object'], 'getEntity')) {
       // Likely this is the stock drupal block layout config.
       $this->configuration['block_id'] = $form_state->getBuildInfo()['callback_object']->getEntity()->id();
       $this->configuration['block_offset'] = '';
     }
     else {
-      /** @var \Drupal\layout_builder\Form\UpdateBlockForm */
+      /** @var UpdateBlockForm */
       $callback_obj = $form_state->getBuildInfo()['callback_object'];
       // Likely this is Layout builder
       $current_component = $callback_obj->getCurrentComponent();
       $uuid = $current_component->getUuid();
       $region = $current_component->getRegion();
-      $weight =  $current_component->getWeight();
+      $weight = $current_component->getWeight();
 
       $layout_offset = $weight . '/' . $region;
 
@@ -381,7 +385,7 @@ Example response:
     $url = Url::fromRoute('ai_search_block.api', [], ['absolute' => FALSE]);
     $block['#attached']['drupalSettings']['ai_search_block']['submit_url'] = $url->toString();
 
-    if(!isset($this->configuration['loading_text'])) {
+    if (!isset($this->configuration['loading_text'])) {
 
     }
     $block['#attached']['drupalSettings']['ai_search_block']['loading_text'] = $this->configuration['loading_text'];
@@ -402,8 +406,7 @@ Example response:
     $form_state = new FormState();
     $form_state
       ->addBuildInfo('block_id', $this->getPluginId())
-      ->addBuildInfo('search_config', $this->configuration)
-    ;
+      ->addBuildInfo('search_config', $this->configuration);
     $form = $this->formBuilder->buildForm(SearchForm::class, $form_state);
     $block['#theme'] = 'ai_search_block_wrapper';
     $block['#attached']['library'][] = 'ai_search_block/ai_search_block';
