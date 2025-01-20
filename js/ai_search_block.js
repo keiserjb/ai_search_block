@@ -11,7 +11,7 @@
         e.preventDefault();
         let $form = $(e.currentTarget);
         var $output_region = $($form).find('.ai-search-block-result-message');
-        $output_region.html('<p class="loading_text">' + drupalSettings.ai_search_block.loading_text + '</p>');
+        $output_region.html('<p class="loading_text"><span class="loader"></span>' + drupalSettings.ai_search_block.loading_text + '</p>');
         const $input = $form.find('[data-drupal-selector="edit-query"]');
         const $inputText = $input.val();
         const $stream = $form.find('[data-drupal-selector="edit-stream"]').val();
