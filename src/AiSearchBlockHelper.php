@@ -7,6 +7,7 @@ namespace Drupal\ai_search_block;
 use Drupal\ai\AiProviderPluginManager;
 use Drupal\ai\OperationType\Chat\ChatInput;
 use Drupal\ai\OperationType\Chat\ChatMessage;
+use Drupal\ai\OperationType\Chat\StreamedChatMessageIteratorInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
@@ -17,6 +18,7 @@ use Drupal\Core\TempStore\PrivateTempStoreFactory;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use League\HTMLToMarkdown\Converter\TableConverter;
 use League\HTMLToMarkdown\HtmlConverter;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The OpenAI API wrapper class for interacting with the client.
@@ -119,10 +121,10 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
    * @param array $rag_database
    *   The RAG database array data.
    *
-   * @return string
+   * @return StreamedResponse
    *   The response.
    */
-  protected function fullEntityCheck(array $result_items, string $query_string, array $rag_database): string {
+  protected function fullEntityCheck(array $result_items, string $query_string, array $rag_database) {
     $rendered_entities = [];
     foreach ($result_items as $result) {
       $entity_string = $result->getExtraData('drupal_entity_id');
@@ -178,9 +180,39 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
     $input = new ChatInput([
       new ChatMessage('user', $message),
     ]);
-    $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
-    $response = $output->getNormalized()->getText() . "\n";
-    return $response;
+
+    if ($this->configuration['stream']) {
+      $provider->streamedOutput();
+      $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
+      $response = $output->getNormalized();
+      if (is_object($response) && $response instanceof StreamedChatMessageIteratorInterface) {
+        return new StreamedResponse(function () use ($response) {
+          foreach ($response as $message) {
+            $item = [];
+            $item['in_html'] = false;
+            $item['answer_piece'] = $message->getText();
+            $out = json_encode($item);
+            unset($item);
+            echo $out . '||';
+            //echo $message->getText();
+            ob_flush();
+            flush();
+          }
+        }, 200, [
+          'Cache-Control' => 'no-cache, must-revalidate',
+          'Content-Type' => 'text/event-stream',
+          'X-Accel-Buffering' => 'no',
+        ]);
+      }else{
+        $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
+        $response = $output->getNormalized()->getText() . "\n";
+        return $response;
+      }
+    }else{
+      $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
+      $response = $output->getNormalized()->getText() . "\n";
+      return $response;
+    }
   }
 
 
@@ -235,7 +267,6 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
    *   The RAG response.
    */
   protected function renderRagResponseAsString($results, string $query, array $rag_database) {
-    $response = '';
     $result_items = [];
     foreach ($results->getResultItems() as $result) {
       // Filter the results.
@@ -247,16 +278,15 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface{
 
       // Chunked mode is easy.
       if ($this->configuration['output_mode'] == 'chunks') {
-        $response .= $result->getExtraData('content') . "\n\n";
+        return $result->getExtraData('content') . "\n\n";
       }
     }
     // For the full entity check, we make a single subsequent chat call to
     // have the LLM extract relevant data for the conversation based on the
     // question the user asked.
     if ($this->configuration['output_mode'] === 'rendered' && !empty($result_items)) {
-      $response .= $this->fullEntityCheck($result_items, $query, $rag_database);
+      return $this->fullEntityCheck($result_items, $query, $rag_database);
     }
-    return $response;
   }
 
 }

@@ -117,7 +117,7 @@ class SearchForm extends FormBase {
 
     $form['message'] = [
       '#type' => 'markup',
-      '#markup' => '<div class="ai_searh_block_result_message"></div>'
+      '#markup' => '<div class="ai-search-block-result-message"> </div>'
     ];
     return $form;
   }
