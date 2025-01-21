@@ -4,13 +4,13 @@
       if (context !== document) {
         return;
       }
-      let $suffix_text = $('#ai-search-block').find('.suffix_text');
+      let $suffix_text = $('#ai-search-block-response .suffix_text');
       $suffix_text.hide();
+      let $output_region = $('#ai-search-block-response .ai-search-block-output');
 
       $('.ai-search-block-form').submit(function(e){
         e.preventDefault();
         let $form = $(e.currentTarget);
-        var $output_region = $($form).find('.ai-search-block-result-message');
         $output_region.html('<p class="loading_text"><span class="loader"></span>' + drupalSettings.ai_search_block.loading_text + '</p>');
         const $input = $form.find('[data-drupal-selector="edit-query"]');
         const $inputText = $input.val();
@@ -80,7 +80,7 @@
         }
         e.stopImmediatePropagation();
         return false;
-      })($suffix_texts);
+      });
     }
   };
 })(jQuery, Drupal);

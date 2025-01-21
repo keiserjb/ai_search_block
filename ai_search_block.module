@@ -9,10 +9,14 @@
  */
 function ai_search_block_theme() {
   return [
+    'ai_search_block_response' => [
+      'variables' => [
+        'output' => NULL,
+      ],
+    ],
     'ai_search_block_wrapper' => [
       'variables' => [
         'rendered_form' => NULL,
-        'output' => NULL,
       ],
     ],
   ];

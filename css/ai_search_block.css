@@ -35,18 +35,20 @@
   border-radius: 0px;
 }
 
-#ai-search-block .suffix_text {
+#ai-search-block-response .suffix_text {
   background-color: #f9f9f9;
   padding: 5px;
   font-size: smaller;
   text-align: center;
 }
-#ai-search-block .ai-search-block-output{
+#ai-search-block-response .ai-search-block-output{
   padding:1em;
 }
-#ai-search-block .loading_text{
+
+#ai-search-block-response .loading_text{
 
 }
+
 .loader {
   width: 25px;
   height: 25px;
