@@ -8,6 +8,7 @@ use Drupal\ai\AiProviderPluginManager;
 use Drupal\ai\OperationType\Chat\ChatInput;
 use Drupal\ai\OperationType\Chat\ChatMessage;
 use Drupal\ai\OperationType\Chat\StreamedChatMessageIteratorInterface;
+use Drupal\Component\Serialization\Json;
 use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\ContentEntityBase;
@@ -210,10 +211,9 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
             $item = [];
             $item['in_html'] = FALSE;
             $item['answer_piece'] = $message->getText();
-            $out = json_encode($item);
+            $out = Json::encode($item);
             unset($item);
             echo $out . '|§|';
-            //echo $message->getText();
             ob_flush();
             flush();
           }

@@ -237,12 +237,17 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       '#description' => $this->t('Select which provider to use for this plugin. See the <a href=":link">Provider overview</a> for details about each provider.', [':link' => '/admin/config/ai/providers']),
     ];
 
-    $default_prompt = $this->t('ALWAYS RESPOND IN HTML.
+    $default_prompt = $this->t('
+INSTRUCTIONS:
+-----------------------
+ALWAYS RESPOND IN HTML.
 Answer the users question (see QUESTION) using the articles below (See ARTICLES).
-Your first language is dutch. iF the user asks the question in another language you may switch to that language.
-Never repeat the question. no pleasantries, just a dry response based on the articles.
+Try to answer the question in the language that the question was asked in.
+Never repeat the question. No pleasantries, just a dry, factual, business worthy response based on the articles.
 Always add the URI to the used resource in the snippet or below the response.
 
+VARIABLES:
+-----------------------
 Today: [date_today]
 Tomorrow: [date_tomorrrow]
 Yesterday: [date_yesterday]
@@ -258,6 +263,8 @@ ARTICLES:
 [entity]
 -----------------------
 
+OUTPUT FORMAT:
+-----------------------
 Conserning the output format:
 The articles are formatted as Markdown. Transform this to HTML.
 You can use simple HTML structures like <b><h3><i><li> and <a>.
@@ -265,11 +272,20 @@ Wrap links in a <a> element, return lists in a <ul><li>
 You can also reformat Markdown as HTML.
 Always add the URI to the used resource in the snippet or below the response.
 
-Example response:
+Example response 1:
 ```html
 <h3>Example title<h3>
 <p>This is a textual rsponse with a <a href="">link</a>.<p>
 ```
+Example response 2:
+```html
+<p>This is a textual response with a <a href="">link</a>.<p>
+<ul>
+<li>option 1</li>
+<li>option 2</li>
+</ul>
+```
+
 (respond like examples but without the starting ```html and trailing ```).
 ');
 
