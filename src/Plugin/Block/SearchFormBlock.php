@@ -11,11 +11,9 @@ use Drupal\Core\File\FileUrlGenerator;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Link;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\Url;
-use Drupal\layout_builder\Form\UpdateBlockForm;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -107,7 +105,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'rendered_view_mode' => 'full',
       'llm_model' => NULL,
       'aggregated_llm' => NULL,
-      'access_check' => FALSE,
+      'access_check' => 'post',
       'context_threshold' => 0.1,
     ];
   }
@@ -305,8 +303,14 @@ Example response:
       ],
     ];
 
+    $access_options = [];
+    $access_options['false'] = $this->t('No access check');
+    $access_options['meta'] = $this->t('[NOT WORKING YET] filter permission in metadata');
+    $access_options['post'] = $this->t('Post (after) lookup access check');
+    $access_options['view'] = $this->t('[NOT WORKING YET] Only content from a view');
     $form['rag']['access_check'] = [
-      '#type' => 'checkbox',
+      '#type' => 'select',
+      '#options' => $access_options,
       '#title' => $this->t('RAG access check'),
       '#description' => $this->t('With this enabled the system will do a post query access check on every chunk to see if the user has access to that content. Note that this might lead to no results and be slower, but it makes sure that none-accessible items are not reached. This is done before the Assistant prompt, so its secure to prompt injection.'),
       '#default_value' => $this->configuration['access_check'],
@@ -372,7 +376,6 @@ Example response:
       $this->configuration['block_offset'] = '';
     }
     else {
-      /** @var UpdateBlockForm */
       $callback_obj = $form_state->getBuildInfo()['callback_object'];
       // Likely this is Layout builder
       $current_component = $callback_obj->getCurrentComponent();
@@ -431,7 +434,7 @@ Example response:
     $block['#theme'] = 'ai_search_block_wrapper';
     $block['#attached']['library'][] = 'ai_search_block/ai_search_block';
     $block['#rendered_form'] = $form;
-    $block['#cache']['max-age'] = 0;
+    //$block['#cache']['max-age'] = 0;
     $block['#output'] = ' ';
     // Set the settings first, since they are needed to render the message.
 //    $block['#attached']['drupalSettings']['ai_chatbot']['bot_name'] = $this->configuration['bot_name'];
@@ -443,13 +446,6 @@ Example response:
 //    $block['#attached']['drupalSettings']['ai_chatbot']['first_message'] = $this->configuration['first_message'];
 //    $block['#attached']['drupalSettings']['ai_chatbot']['has_history'] = $has_history;
     return $block;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getCacheMaxAge() {
-    return 0;
   }
 
 }

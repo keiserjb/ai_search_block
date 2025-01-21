@@ -14,6 +14,7 @@ use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\Core\Entity\TranslatableInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
@@ -281,7 +282,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $query = $index->query([
         'limit' => $this->configuration['max_results'],
       ]);
-      $query->setOption('search_api_bypass_access', !$this->configuration['access_check']);
+      $query->setOption('search_api_bypass_access', ($this->configuration['access_check'] == 'false'));
       $query->setOption('search_api_ai_get_chunks_result', $this->configuration['output_mode'] == 'chunks');
       $queries = $query_string;
       $query->keys($queries);

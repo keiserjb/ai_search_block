@@ -5,6 +5,7 @@ namespace Drupal\ai_search_block\Controller;
 use Drupal;
 use Drupal\ai_search_block\AiSearchBlockHelper;
 use Drupal\block\Entity\Block;
+use Drupal\Component\Serialization\Json;
 use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,17 +22,16 @@ class AiSearchBlockController extends ControllerBase {
    */
   public function search(Request $request) {
     if (isset($_POST['block_id'])) {
-      $query = $_POST['query'];
-      $block_id = $_POST['block_id'];
-      $stream = $_POST['stream'];
+      $query = $request->get('query');
+      $block_id = $request->get('block_id');
+      $stream = $request->get('stream');
     }
     else {
-      $data = json_decode(file_get_contents('php://input'), TRUE);
+      $data = Json::decode(file_get_contents('php://input'));
       $query = $data['query'];
       $stream = $data['stream'];
       $block_id = $data['block_id'];
     }
-
 
     $block = Block::load($block_id);
     if ($block) {
