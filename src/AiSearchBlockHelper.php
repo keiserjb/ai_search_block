@@ -9,10 +9,12 @@ use Drupal\ai\OperationType\Chat\ChatInput;
 use Drupal\ai\OperationType\Chat\ChatMessage;
 use Drupal\ai\OperationType\Chat\StreamedChatMessageIteratorInterface;
 use Drupal\Core\Cache\CacheBackendInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
+use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -27,6 +29,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use League\HTMLToMarkdown\Converter\TableConverter;
 use League\HTMLToMarkdown\HtmlConverter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Drupal\Core\Session\AccountProxyInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * The Helper service to do RA stuff.
@@ -40,6 +44,10 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
                               protected RendererInterface          $renderer,
                               protected HtmlConverter              $converter,
                               protected AiProviderPluginManager    $aiProviderManager,
+                              protected RequestStack               $requestStack,
+                              protected LanguageManagerInterface   $languageManager,
+                              protected AccountProxyInterface      $currentUser,
+                              protected ConfigFactoryInterface     $configFactory,
   ) {
 
     // Set the default converter settings.
@@ -59,9 +67,12 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $container->get('renderer'),
       new HtmlConverter(),
       $container->get('ai.provider'),
+      $container->get('request_stack'),
+      $container->get('language_manager'),
+      $container->get('current_user'),
+      $container->get('config.factory'),
     );
   }
-
 
   /**
    *
@@ -139,6 +150,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $rendered = $this->renderer->render($pre_render_entity);
       $rendered_entities[] = $this->converter->convert((string)$rendered);
     }
+
     $message = str_replace([
       '[question]',
       '[entity]',
@@ -146,6 +158,22 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $query_string,
       implode("\n------------\n", $rendered_entities),
     ], nl2br($this->configuration['aggregated_llm']));
+
+    foreach ($this->getPrePromptDrupalContext() as $key => $replace) {
+      $message = str_replace('[' . $key . ']', is_null($replace) ? '' : $replace, $message);
+    }
+
+    $tomorrow = strtotime('+ 1 day');
+    $yesterday = strtotime('- 1 day');
+    $date_today = date("D M j G:i:s T Y");
+    $date_tomorrow = date("D M j G:i:s T Y", $tomorrow);
+    $date_yesterday = date("D M j G:i:s T Y", $yesterday);
+    $time_now = date("H:i:s");
+
+    $message = str_replace('[time_now]', $time_now, $message);
+    $message = str_replace('[date_today]',  $date_today, $message);
+    $message = str_replace('[date_tomorrow]',  $date_tomorrow, $message);
+    $message = str_replace('[date_yesterday]', $date_yesterday, $message);
 
     // Now we have the entity, we can check it with the LLM.
     $ai_provider_model = $this->configuration['llm_model'];
@@ -169,6 +197,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     $input = new ChatInput([
       new ChatMessage('user', $message),
     ]);
+
 
     if ($this->configuration['stream']) {
       $provider->streamedOutput();
@@ -206,6 +235,26 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     }
   }
 
+  /**
+   * Get preprompt Drupal context.
+   *
+   * @return string[]
+   *   This is the Drupal context that you can add to the pre prompt.
+   */
+  public function getPrePromptDrupalContext() {
+    $context = [];
+    $current_request = $this->requestStack->getCurrentRequest();
+    $context['is_logged_in'] = $this->currentUser->isAuthenticated() ? 'is logged in' : 'is not logged in';
+    $context['user_roles'] = implode(', ', $this->currentUser->getRoles());
+    $context['user_id'] = $this->currentUser->id();
+    $context['user_name'] = $this->currentUser->getDisplayName();
+    $context['user_language'] = $this->currentUser->getPreferredLangcode();
+    $context['user_timezone'] = $this->currentUser->getTimeZone();
+    $context['page_path'] = $current_request->getRequestUri();
+    $context['page_language'] = $this->languageManager->getCurrentLanguage()->getId();
+    $context['site_name'] = $this->configFactory->get('system.site')->get('name');
+    return $context;
+  }
 
   /**
    * Process RAG.

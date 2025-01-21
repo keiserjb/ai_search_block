@@ -5,5 +5,5 @@ services:
 
   ai_search_block.helper:
     class: Drupal\ai_search_block\AiSearchBlockHelper
-    arguments: ['@tempstore.private','@entity_type.manager', '@renderer', '@league.html_to_markdown.html_converter', '@ai.provider']
+    arguments: ['@tempstore.private','@entity_type.manager','@renderer','@league.html_to_markdown.html_converter','@ai.provider','@request_stack','@language_manager','@current_user','@config.factory']
     autowire: true

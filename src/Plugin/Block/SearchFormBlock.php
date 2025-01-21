@@ -205,7 +205,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
     $form['rag']['output_mode'] = [
       '#type' => 'select',
       '#title' => $this->t('RAG context mode'),
-      '#description' => $this->t('The context mode for the list given to the Assistant. <br>The <strong>chunk mode</strong> will return the chunk as they are and the LLM will act on this - if chunked correctly this produces very quick answer for chatbots that needs to answer quickly.<br>If you return <strong>aggregated and rendered entities</strong>, there will be an LLM agent first checking each of the answers over the whole entity, and then return an aggregated answer to the Assistant. This is slower, but more accurate.'),
+      '#description' => $this->t('The context mode for the list given. <br>The <strong>chunk mode</strong> will return the chunk as they are and the LLM will act on this - if chunked correctly this produces very quick answer for chatbots that needs to answer quickly.<br>If you return <strong>aggregated and rendered entities</strong>, there will be an LLM agent first checking each of the answers over the whole entity, and then return an aggregated answer. This is slower, but more accurate.'),
       '#default_value' => $this->configuration['output_mode'],
       '#options' => [
         'chunks' => $this->t('Chunks'),
@@ -239,10 +239,16 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       '#description' => $this->t('Select which provider to use for this plugin. See the <a href=":link">Provider overview</a> for details about each provider.', [':link' => '/admin/config/ai/providers']),
     ];
 
-    $default_prompt = $this->t('Answer the users question (see QUESTION) using the articles below (See ARTICLES).
+    $default_prompt = $this->t('ALWAYS RESPOND IN HTML.
+Answer the users question (see QUESTION) using the articles below (See ARTICLES).
 Your first language is dutch. iF the user asks the question in another language you may switch to that language.
 Never repeat the question. no pleasantries, just a dry response based on the articles.
 Always add the URI to the used resource in the snippet or below the response.
+
+Today: [date_today]
+Tomorrow: [date_tomorrrow]
+Yesterday: [date_yesterday]
+The current time: [time_now]
 
 QUESTION:
 -----------------------
@@ -266,13 +272,27 @@ Example response:
 <h3>Example title<h3>
 <p>This is a textual rsponse with a <a href="">link</a>.<p>
 ```
+(respond like examples but without the starting ```html and trailing ```).
 ');
-
 
     $form['rag']['aggregated_llm'] = [
       '#type' => 'textarea',
       '#title' => $this->t('RAG LLM Agent'),
-      '#description' => $this->t('With Aggregated and Rendered entities, this agent will take each of the entities returned and create one summarized answer to feed to the assistant. This can take the tokens [question] and [entity] or even specific tokens from the entity below. If multiple results are found the [entity] will be replaced with the contents of multiple results separated by --------- and new lines.'),
+      '#description' =>  $this->t('With Aggregated and Rendered entities, this agent will take each of the entities returned and create one summarized answer to feed to the assistant. This can take the tokens [question] and [entity] or even specific tokens from the entity below. If multiple results are found the [entity] will be replaced with the contents of multiple results separated by --------- and new lines.<br><br><strong>The following placesholders can be used:</strong><br>
+      <em>[is_logged_in]</em> - A message if the person is logged in or not.<br>
+      <em>[user_name]</em> - The username of the user.<br>
+      <em>[user_roles]</em> - The roles of the user.<br>
+      <em>[user_id]</em> - The user id of the user.<br>
+      <em>[user_language]</em> - The language of the user.<br>
+      <em>[user_timezone]</em> - The timezone of the user.<br>
+      <em>[page_path]</em> - The path of the page.<br>
+      <em>[page_language]</em> - The language of the page.<br>
+      <em>[site_name]</em> - The name of the site.<br>
+      <em>[date_today]</em> - Today.<br>
+      <em>[date_yesterday]</em> - Yesterday.<br>
+      <em>[date_tomorrrow]</em> - Tomorrow.<br>
+      <em>[time_now]</em> - The current time.<br>
+      '),
       '#default_value' => $this->configuration['aggregated_llm'] ?? $default_prompt,
       '#attributes' => [
         'rows' => 10,
