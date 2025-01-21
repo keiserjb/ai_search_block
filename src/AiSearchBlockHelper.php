@@ -29,6 +29,7 @@ use Exception;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use League\HTMLToMarkdown\Converter\TableConverter;
 use League\HTMLToMarkdown\HtmlConverter;
+use League\CommonMark\CommonMarkConverter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Drupal\Core\Session\AccountProxyInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -44,6 +45,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
                               protected EntityTypeManagerInterface $entityTypeManager,
                               protected RendererInterface          $renderer,
                               protected HtmlConverter              $converter,
+                              protected CommonMarkConverter        $markdownConverter,
                               protected AiProviderPluginManager    $aiProviderManager,
                               protected RequestStack               $requestStack,
                               protected LanguageManagerInterface   $languageManager,
@@ -55,18 +57,19 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     $this->converter->getConfig()->setOption('strip_tags', TRUE);
     $this->converter->getConfig()->setOption('strip_placeholder_links', TRUE);
     $this->converter->getEnvironment()->addConverter(new TableConverter());
-    //parent::__construct();
   }
 
   /**
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    $conversionConfig = ['html_input' => 'escape', 'allow_unsafe_links' => false];
     return new static(
       $container->get('tempstore.private'),
       $container->get('entity_type.manager'),
       $container->get('renderer'),
       new HtmlConverter(),
+      new CommonMarkConverter($conversionConfig),
       $container->get('ai.provider'),
       $container->get('request_stack'),
       $container->get('language_manager'),
@@ -209,7 +212,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
           foreach ($response as $message) {
             $item = [];
             $item['in_html'] = FALSE;
-            $item['answer_piece'] = $message->getText();
+            $html = $this->markdownConverter->convertToHtml($message->getText())->getContent();
+            $item['answer_piece'] = $html;
             $out = json_encode($item);
             unset($item);
             echo $out . '|§|';
