@@ -4,6 +4,7 @@ namespace Drupal\ai_search_block\Plugin\Block;
 
 use Drupal\ai_assistant_api\AiAssistantApiRunner;
 use Drupal\ai_search_block\Form\SearchForm;
+use Drupal\Core\Block\Annotation\Block;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -28,53 +29,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * )
  */
 class SearchResponseBlock extends BlockBase implements ContainerFactoryPluginInterface {
-
-  /**
-   * The entity type manager.
-   *
-   * @var EntityTypeManagerInterface
-   */
-  protected EntityTypeManagerInterface $entityTypeManager;
-
-  /**
-   * The form builder.
-   *
-   * @var FormBuilderInterface
-   */
-  protected FormBuilderInterface $formBuilder;
-
-  /**
-   * Current user.
-   *
-   * @var AccountProxyInterface
-   */
-  protected $currentUser;
-
-  /**
-   * The AI Assistant API runner.
-   *
-   * @var AiAssistantApiRunner
-   */
-  protected $aiAssistantRunner;
-
-  /**
-   * The file url generator.
-   *
-   * @var FileUrlGenerator
-   */
-  protected $fileUrlGenerator;
-
-  /**
-   * @var EntityDisplayRepositoryInterface
-   *   The entity display repository.
-   */
-  protected $entityDisplayRepository;
-
-  /**
-   * @var
-   *   The ai provider manager.
-   */
-  protected $aiProviderManager;
 
   /**
    * {@inheritdoc}

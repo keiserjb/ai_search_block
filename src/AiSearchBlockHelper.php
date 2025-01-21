@@ -13,7 +13,6 @@ use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-
 use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 use Drupal\Core\Entity\TranslatableInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
@@ -42,15 +41,16 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
 
   use StringTranslationTrait;
 
-  public function __construct(protected PrivateTempStoreFactory    $tmpStore,
-                              protected EntityTypeManagerInterface $entityTypeManager,
-                              protected RendererInterface          $renderer,
-                              protected HtmlConverter              $converter,
-                              protected AiProviderPluginManager    $aiProviderManager,
-                              protected RequestStack               $requestStack,
-                              protected LanguageManagerInterface   $languageManager,
-                              protected AccountProxyInterface      $currentUser,
-                              protected ConfigFactoryInterface     $configFactory,
+  public function __construct(
+    protected PrivateTempStoreFactory    $tmpStore,
+    protected EntityTypeManagerInterface $entityTypeManager,
+    protected RendererInterface          $renderer,
+    protected HtmlConverter              $converter,
+    protected AiProviderPluginManager    $aiProviderManager,
+    protected RequestStack               $requestStack,
+    protected LanguageManagerInterface   $languageManager,
+    protected AccountProxyInterface      $currentUser,
+    protected ConfigFactoryInterface     $configFactory,
   ) {
     $this->converter->getConfig()->setOption('strip_tags', TRUE);
     $this->converter->getConfig()->setOption('strip_placeholder_links', TRUE);
@@ -104,7 +104,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    *
    * @return JsonResponse
    */
-  public function GiveMeAnError($msg){
+  public function GiveMeAnError($msg) {
     $item = [];
     $item['answer_piece'] = $msg;
     return new JsonResponse(['response' => $item], 500);
@@ -132,7 +132,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       [, $entity_parts, $lang] = explode(':', $entity_string);
       [$entity_type, $entity_id] = explode('/', $entity_parts);
       /** @var ContentEntityBase */
-      $entity = $this->entityTypeManager->getStorage($entity_type)->load($entity_id);
+      $entity = $this->entityTypeManager->getStorage($entity_type)
+        ->load($entity_id);
 
       // Get translated if possible.
       if (
@@ -145,9 +146,10 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
 
       // Render the entity in selected view mode.
       $view_mode = $this->configuration['aggregated_llm'] ?? 'full';
-      $pre_render_entity = $this->entityTypeManager->getViewBuilder($entity_type)->view($entity, $view_mode);
+      $pre_render_entity = $this->entityTypeManager->getViewBuilder($entity_type)
+        ->view($entity, $view_mode);
       $rendered = $this->renderer->render($pre_render_entity);
-      $rendered_entities[] = $this->converter->convert((string)$rendered);
+      $rendered_entities[] = $this->converter->convert((string) $rendered);
     }
 
     $message = str_replace([
@@ -170,8 +172,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     $time_now = date("H:i:s");
 
     $message = str_replace('[time_now]', $time_now, $message);
-    $message = str_replace('[date_today]',  $date_today, $message);
-    $message = str_replace('[date_tomorrow]',  $date_tomorrow, $message);
+    $message = str_replace('[date_today]', $date_today, $message);
+    $message = str_replace('[date_tomorrow]', $date_tomorrow, $message);
     $message = str_replace('[date_yesterday]', $date_yesterday, $message);
 
     // Now we have the entity, we can check it with the LLM.
@@ -246,8 +248,10 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     $context['user_language'] = $this->currentUser->getPreferredLangcode();
     $context['user_timezone'] = $this->currentUser->getTimeZone();
     $context['page_path'] = $current_request->getRequestUri();
-    $context['page_language'] = $this->languageManager->getCurrentLanguage()->getId();
-    $context['site_name'] = $this->configFactory->get('system.site')->get('name');
+    $context['page_language'] = $this->languageManager->getCurrentLanguage()
+      ->getId();
+    $context['site_name'] = $this->configFactory->get('system.site')
+      ->get('name');
     return $context;
   }
 

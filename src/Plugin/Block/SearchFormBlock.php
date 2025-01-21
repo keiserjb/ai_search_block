@@ -2,8 +2,9 @@
 
 namespace Drupal\ai_search_block\Plugin\Block;
 
-use Drupal\ai_assistant_api\AiAssistantApiRunner;
+use Drupal\ai\AiProviderPluginManager;
 use Drupal\ai_search_block\Form\SearchForm;
+use Drupal\Core\Block\Annotation\Block;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -49,13 +50,6 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
   protected $currentUser;
 
   /**
-   * The AI Assistant API runner.
-   *
-   * @var AiAssistantApiRunner
-   */
-  protected $aiAssistantRunner;
-
-  /**
    * The file url generator.
    *
    * @var FileUrlGenerator
@@ -69,15 +63,15 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
   protected $entityDisplayRepository;
 
   /**
-   * @var
-   *   The ai provider manager.
+   * @var AiProviderPluginManager
+   *   The AI provider manager.
    */
   protected $aiProviderManager;
 
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition): object {
     $plugin = new static($configuration, $plugin_id, $plugin_definition);
     $plugin->entityTypeManager = $container->get('entity_type.manager');
     $plugin->formBuilder = $container->get('form_builder');
@@ -91,7 +85,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
   /**
    * {@inheritdoc}
    */
-  public function defaultConfiguration() {
+  public function defaultConfiguration(): array {
     return [
       'placeholder' => 'Ask me a question about your subject here!',
       'submit_text' => 'Ask question',
@@ -113,7 +107,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
   /**
    * {@inheritdoc}
    */
-  public function blockForm($form, FormStateInterface $form_state) {
+  public function blockForm($form, FormStateInterface $form_state): array {
     $form['form_config'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('Form config'),
@@ -247,7 +241,7 @@ Always add the URI to the used resource in the snippet or below the response.
 VARIABLES:
 -----------------------
 Today: [date_today]
-Tomorrow: [date_tomorrrow]
+Tomorrow: [date_tomorrow]
 Yesterday: [date_yesterday]
 The current time: [time_now]
 
@@ -263,7 +257,7 @@ ARTICLES:
 
 OUTPUT FORMAT:
 -----------------------
-Conserning the output format:
+Concerning the output format:
 The articles are formatted as Markdown. Transform this to HTML.
 You can use simple HTML structures like <b><h3><i><li> and <a>.
 Wrap links in a <a> element, return lists in a <ul><li>
@@ -273,7 +267,7 @@ Always add the URI to the used resource in the snippet or below the response.
 Example response 1:
 ```html
 <h3>Example title<h3>
-<p>This is a textual rsponse with a <a href="">link</a>.<p>
+<p>This is a textual response with a <a href="">link</a>.<p>
 ```
 Example response 2:
 ```html
@@ -290,7 +284,7 @@ Example response 2:
     $form['rag']['aggregated_llm'] = [
       '#type' => 'textarea',
       '#title' => $this->t('RAG LLM Agent'),
-      '#description' => $this->t('With Aggregated and Rendered entities, this agent will take each of the entities returned and create one summarized answer to feed to the assistant. This can take the tokens [question] and [entity] or even specific tokens from the entity below. If multiple results are found the [entity] will be replaced with the contents of multiple results separated by --------- and new lines.<br><br><strong>The following placesholders can be used:</strong><br>
+      '#description' => $this->t('With Aggregated and Rendered entities, this agent will take each of the entities returned and create one summarized answer to feed to the assistant. This can take the tokens [question] and [entity] or even specific tokens from the entity below. If multiple results are found the [entity] will be replaced with the contents of multiple results separated by --------- and new lines.<br><br><strong>The following placeholders can be used:</strong><br>
       <em>[is_logged_in]</em> - A message if the person is logged in or not.<br>
       <em>[user_name]</em> - The username of the user.<br>
       <em>[user_roles]</em> - The roles of the user.<br>
@@ -302,7 +296,7 @@ Example response 2:
       <em>[site_name]</em> - The name of the site.<br>
       <em>[date_today]</em> - Today.<br>
       <em>[date_yesterday]</em> - Yesterday.<br>
-      <em>[date_tomorrrow]</em> - Tomorrow.<br>
+      <em>[date_tomorrow]</em> - Tomorrow.<br>
       <em>[time_now]</em> - The current time.<br>
       '),
       '#default_value' => $this->configuration['aggregated_llm'] ?? $default_prompt,
@@ -351,7 +345,8 @@ Example response 2:
   private function getSearchDatabases(): array {
     $databases = [];
     $databases[''] = $this->t('-- Select --');
-    $indices = $this->entityTypeManager->getStorage('search_api_index')->loadMultiple();
+    $indices = $this->entityTypeManager->getStorage('search_api_index')
+      ->loadMultiple();
     foreach ($indices as $index) {
       $databases[$index->id()] = $index->label() . ' (' . $index->id() . ')';
     }
@@ -381,7 +376,8 @@ Example response 2:
     //llm_model
     if (method_exists($form_state->getBuildInfo()['callback_object'], 'getEntity')) {
       // Likely this is the stock drupal block layout config.
-      $this->configuration['block_id'] = $form_state->getBuildInfo()['callback_object']->getEntity()->id();
+      $this->configuration['block_id'] = $form_state->getBuildInfo()['callback_object']->getEntity()
+        ->id();
       $this->configuration['block_offset'] = '';
     }
     else {
@@ -400,7 +396,7 @@ Example response 2:
   /**
    * {@inheritdoc}
    */
-  public function build() {
+  public function build(): array {
     $block = [];
     $block['#settings'] = $this->configuration;
     $url = Url::fromRoute('ai_search_block.api', [], ['absolute' => FALSE]);
