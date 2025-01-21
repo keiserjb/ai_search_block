@@ -211,7 +211,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
             $item['answer_piece'] = $message->getText();
             $out = json_encode($item);
             unset($item);
-            echo $out . '||';
+            echo $out . '|§|';
             //echo $message->getText();
             ob_flush();
             flush();

@@ -32,7 +32,7 @@
               const newUpdates = xhr.responseText
                 .replace('false', 'true')
                 .trim()
-                .split('||')
+                .split('|§|')
                 .filter(Boolean);
               const newUpdatesParsed = newUpdates.map((update) => {
                 const parsed = JSON.parse(update);
