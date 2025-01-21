@@ -30,6 +30,7 @@ use Exception;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use League\HTMLToMarkdown\Converter\TableConverter;
 use League\HTMLToMarkdown\HtmlConverter;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Drupal\Core\Session\AccountProxyInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -51,12 +52,9 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
                               protected AccountProxyInterface      $currentUser,
                               protected ConfigFactoryInterface     $configFactory,
   ) {
-
-    // Set the default converter settings.
     $this->converter->getConfig()->setOption('strip_tags', TRUE);
     $this->converter->getConfig()->setOption('strip_placeholder_links', TRUE);
     $this->converter->getEnvironment()->addConverter(new TableConverter());
-    //parent::__construct();
   }
 
   /**
@@ -87,30 +85,30 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * Take rag action.
    */
   public function searchRagAction($query) {
-    // Fall Use the default RAG database from this plugin configuration.
     if (!empty($this->configuration['database'])) {
       $rag_database = $this->configuration;
     }
-
     if (!isset($rag_database)) {
-      $this->setOutputContext('rag', 'No RAG database found.');
-      return;
+      return $this->GiveMeAnError('[ERROR] No RAG database found.');
     }
     $results = $this->getRagResults($rag_database, $query);
-    // Get the results we are interested in as a string.
+    $min_results = $this->configuration['min_results'];
+    if ($results->getResultCount() < $min_results) {
+      return $this->GiveMeAnError($this->configuration['no_results_message']);
+    }
     return $this->renderRagResponseAsString($results, $query, $rag_database);
   }
 
   /**
-   * @param $type
    * @param $msg
    *
-   * @return mixed
+   * @return JsonResponse
    */
-  private function setOutputContext($type, $msg) {
-    return $msg;
+  public function GiveMeAnError($msg){
+    $item = [];
+    $item['answer_piece'] = $msg;
+    return new JsonResponse(['response' => $item], 500);
   }
-
 
   /**
    * Full entity check with a LLM checking the rendered entity.
@@ -146,7 +144,6 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       }
 
       // Render the entity in selected view mode.
-
       $view_mode = $this->configuration['aggregated_llm'] ?? 'full';
       $pre_render_entity = $this->entityTypeManager->getViewBuilder($entity_type)->view($entity, $view_mode);
       $rendered = $this->renderer->render($pre_render_entity);
@@ -189,17 +186,14 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $parts = explode('__', $ai_provider_model);
       $ai_model_to_use = $parts[1];
     }
-
     $provider = $this->aiProviderManager->loadProviderFromSimpleOption($ai_provider_model);
     $config = [];
     foreach ($this->configuration as $key => $val) {
       $config[$key] = $val;
     }
-    //$provider->setConfiguration($config);
     $input = new ChatInput([
       new ChatMessage('user', $message),
     ]);
-
 
     if ($this->configuration['stream']) {
       $provider->streamedOutput();
@@ -271,13 +265,12 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   protected function getRagResults(array $rag_database, string $query_string = '') {
     /** @var Index */
     $rag_storage = $this->entityTypeManager->getStorage('search_api_index');
-    // Get the index.
+
     $index = $rag_storage->load($rag_database['database']);
     if (!$index) {
       throw new Exception('RAG database not found.');
     }
 
-    // Then we try to search.
     try {
       $query = $index->query([
         'limit' => $this->configuration['max_results'],
@@ -314,18 +307,9 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       if ($this->configuration['score_threshold'] > $result->getScore()) {
         continue;
       }
-
       $result_items[] = $result;
-
-      // Chunked mode is easy.
-      if ($this->configuration['output_mode'] == 'chunks') {
-        return $result->getExtraData('content') . "\n\n";
-      }
     }
-    // For the full entity check, we make a single subsequent chat call to
-    // have the LLM extract relevant data for the conversation based on the
-    // question the user asked.
-    if ($this->configuration['output_mode'] === 'rendered' && !empty($result_items)) {
+    if (!empty($result_items)) {
       return $this->fullEntityCheck($result_items, $query, $rag_database);
     }
   }

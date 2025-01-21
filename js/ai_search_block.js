@@ -46,6 +46,12 @@
                 $suffix_text.html(drupalSettings.ai_search_block.suffix_text);
                 $suffix_text.show();
               }
+              if (xhr.readyState == 4 && this.status == 500) {
+                $output_region.html('An error happened.');
+                console.log(xhr.responseText);
+                const parsed = JSON.parse(xhr.responseText);
+                $output_region.html(parsed.response.answer_piece);
+              }
             }
             xhr.send();
           }else{

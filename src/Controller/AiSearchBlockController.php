@@ -32,7 +32,6 @@ class AiSearchBlockController extends ControllerBase {
       $stream = $data['stream'];
       $block_id = $data['block_id'];
     }
-
     $block = Block::load($block_id);
     if ($block) {
       $settings = $block->get('settings');
@@ -49,7 +48,6 @@ class AiSearchBlockController extends ControllerBase {
       else {
         return new JsonResponse(['response' => $results]);
       }
-
     }
     else {
       return new JsonResponse(['response' => 'There was an error fetching your data']);
