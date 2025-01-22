@@ -13,9 +13,11 @@
         "issues": "https://drupal.org/project/ai_search_block",
         "source": "https://git.drupalcode.org/project/ai_search_block"
     },
-    "license": "GPL-2.0-or-later",
-    "minimum-stability": "dev",
     "require": {
         "drupal/ai": "^1",
-    }
+        "league/html-to-markdown": "^5.1",
+        "league/commonmark": "^2.6"
+    },
+    "license": "GPL-2.0-or-later",
+    "minimum-stability": "dev"
 }
