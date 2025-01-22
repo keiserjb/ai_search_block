@@ -3,23 +3,15 @@
 namespace Drupal\ai_search_block\Form;
 
 use Drupal\Component\Utility\Html;
-use Drupal\Core\Ajax\AjaxResponse;
-use Drupal\Core\Ajax\HtmlCommand;
 use Drupal\Core\DependencyInjection\DependencySerializationTrait;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
-use Drupal\ai\OperationType\Chat\ChatMessage;
-use Drupal\ai_assistant_api\AiAssistantApiRunner;
-use Drupal\ai_assistant_api\Data\UserMessage;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use Symfony\Component\Yaml\Yaml;
 
 /**
- * Provides a ai search form.
+ * Provides an AI search form.
  */
 class SearchForm extends FormBase {
 
@@ -28,9 +20,9 @@ class SearchForm extends FormBase {
   /**
    * Construct the chat.
    *
-   * @param EntityTypeManagerInterface $entityTypeManager
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
    *   The entity type manager.
-   * @param RouteMatchInterface $routeMatcher
+   * @param \Drupal\Core\Routing\RouteMatchInterface $routeMatcher
    *   The route match.
    */
   public function __construct(
@@ -42,7 +34,7 @@ class SearchForm extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public static function create(ContainerInterface $container) {
+  public static function create(ContainerInterface $container): SearchForm|static {
     return new static(
       $container->get('entity_type.manager'),
       $container->get('current_route_match'),
@@ -52,20 +44,14 @@ class SearchForm extends FormBase {
   /**
    * {@inheritdoc}
    */
-  public function getFormId() {
+  public function getFormId(): string {
     return 'ai_search_block_form';
   }
 
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state) {
-    // Set the assistant if it's not set.
-    $context = [];
-    foreach ($this->routeMatcher->getParameters()->all() as $key => $data) {
-      $context[$key] = $this->routeMatcher->getParameter($key);
-    }
-
+  public function buildForm(array $form, FormStateInterface $form_state): array {
     $response_id = Html::getId($form_state->getBuildInfo()['block_id'] . '-response');
     $search_block_config = $form_state->getBuildInfo()['search_config'];
 
@@ -118,21 +104,6 @@ class SearchForm extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    //    $search_block_config = $form_state->getBuildInfo()['search_config'];
-    //    $database = $search_block_config['database'];
-  }
-
-  /**
-   * Get all the Chat config from build info with defaults.
-   *
-   * @param FormStateInterface $form_state
-   *   The form state to get build info from.
-   *
-   * @return array
-   *   The array of chat config with defaults where required.
-   */
-  protected function getSearchConfig(FormStateInterface $form_state) {
-    return $form_state->getBuildInfo()['search_config'] ?? [];
   }
 
 }

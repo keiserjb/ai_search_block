@@ -2,19 +2,14 @@
 
 namespace Drupal\ai_search_block\Plugin\Block;
 
-use Drupal\ai\AiProviderPluginManager;
-use Drupal\ai_search_block\Form\SearchForm;
-use Drupal\Core\Block\Annotation\Block;
-use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\File\FileUrlGenerator;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\Url;
+use Drupal\ai_search_block\Form\SearchForm;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -31,40 +26,42 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
   /**
    * The entity type manager.
    *
-   * @var EntityTypeManagerInterface
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
   protected EntityTypeManagerInterface $entityTypeManager;
 
   /**
    * The form builder.
    *
-   * @var FormBuilderInterface
+   * @var \Drupal\Core\Form\FormBuilderInterface
    */
   protected FormBuilderInterface $formBuilder;
 
   /**
    * Current user.
    *
-   * @var AccountProxyInterface
+   * @var \Drupal\Core\Session\AccountProxyInterface
    */
   protected $currentUser;
 
   /**
    * The file url generator.
    *
-   * @var FileUrlGenerator
+   * @var \Drupal\Core\File\FileUrlGenerator
    */
   protected $fileUrlGenerator;
 
   /**
-   * @var EntityDisplayRepositoryInterface
-   *   The entity display repository.
+   * The entity display repository.
+   *
+   * @var \Drupal\Core\Entity\EntityDisplayRepositoryInterface
    */
   protected $entityDisplayRepository;
 
   /**
-   * @var AiProviderPluginManager
-   *   The AI provider manager.
+   * The AI provider manager.
+   *
+   * @var \Drupal\ai\AiProviderPluginManager
    */
   protected $aiProviderManager;
 
@@ -185,7 +182,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
     $form['rag']['no_results_message'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Not sufficient results found message'),
-      '#description' => $this->t('When we can\'t find content, this is the message that will be shown'),
+      '#description' => $this->t("When we can't find content, this is the message that will be shown"),
       '#default_value' => $this->configuration['no_results_message'],
     ];
 
@@ -373,7 +370,7 @@ Example response 2:
     $this->configuration['context_threshold'] = $form_state->getValue('rag')['context_threshold'];
     $this->configuration['llm_model'] = $form_state->getValue('rag')['llm_model'];
 
-    //llm_model
+    // llm_model.
     if (method_exists($form_state->getBuildInfo()['callback_object'], 'getEntity')) {
       // Likely this is the stock drupal block layout config.
       $this->configuration['block_id'] = $form_state->getBuildInfo()['callback_object']->getEntity()
@@ -382,7 +379,7 @@ Example response 2:
     }
     else {
       $callback_obj = $form_state->getBuildInfo()['callback_object'];
-      // Likely this is Layout builder
+      // Likely this is Layout builder.
       $current_component = $callback_obj->getCurrentComponent();
       $uuid = $current_component->getUuid();
       $region = $current_component->getRegion();

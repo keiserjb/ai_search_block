@@ -2,10 +2,10 @@
 
 namespace Drupal\ai_search_block\Controller;
 
-use Drupal\ai_search_block\AiSearchBlockHelper;
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\ai_search_block\AiSearchBlockHelper;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -18,7 +18,7 @@ class AiSearchBlockController extends ControllerBase {
   /**
    * The AiSearchBlockHelper.
    *
-   * @var AiSearchBlockHelper
+   * @var \Drupal\ai_search_block\AiSearchBlockHelper
    */
   protected $searchBlockHelper;
 
@@ -39,8 +39,10 @@ class AiSearchBlockController extends ControllerBase {
   /**
    * Constructor.
    *
-   * @param AiSearchBlockHelper $searchBlockHelper
+   * @param \Drupal\ai_search_block\AiSearchBlockHelper $searchBlockHelper
    *   The form builder.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_manager
+   *   The entity type manager.
    */
   public function __construct(AiSearchBlockHelper $searchBlockHelper, EntityTypeManagerInterface $entity_manager) {
     $this->searchBlockHelper = $searchBlockHelper;
@@ -67,7 +69,7 @@ class AiSearchBlockController extends ControllerBase {
   /**
    * Returns a renderable array for a test page.
    *
-   * return []
+   * Return []
    */
   public function search(Request $request) {
     if ($request->get('block_id')) {
@@ -88,7 +90,8 @@ class AiSearchBlockController extends ControllerBase {
       $results = $this->searchBlockHelper->searchRagAction($query);
       if ($stream) {
         header('X-Accel-Buffering: no');
-        set_time_limit(0);              // making maximum execution time unlimited
+        // Making maximum execution time unlimited.
+        set_time_limit(0);
         ob_implicit_flush(1);
         return $results;
       }

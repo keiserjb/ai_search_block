@@ -8,7 +8,7 @@
       $suffix_text.hide();
       let $output_region = $('#ai-search-block-response .ai-search-block-output');
 
-      $('.ai-search-block-form').submit(function(e){
+      $('.ai-search-block-form').submit(function (e) {
         e.preventDefault();
         let $form = $(e.currentTarget);
         $output_region.html('<p class="loading_text"><span class="loader"></span>' + drupalSettings.ai_search_block.loading_text + '</p>');
@@ -16,7 +16,7 @@
         const $inputText = $input.val();
         const $stream = $form.find('[data-drupal-selector="edit-stream"]').val();
         const $block_id = $form.find('[data-drupal-selector="edit-block-id"]').val();
-        try{
+        try {
           if ($stream) {
             let lastResponseLength = false;
             xhr = new XMLHttpRequest();
@@ -28,7 +28,7 @@
               stream: $stream,
               block_id: $block_id,
             }));
-            xhr.onprogress = function(e) {
+            xhr.onprogress = function (e) {
               const newUpdates = xhr.responseText
                 .replace('false', 'true')
                 .trim()
@@ -41,7 +41,7 @@
               const joined = newUpdatesParsed.join('');
               $output_region.html(joined);
             }
-            xhr.onreadystatechange = function() {
+            xhr.onreadystatechange = function () {
               if (xhr.readyState == 4 && this.status == 200) {
                 $suffix_text.html(drupalSettings.ai_search_block.suffix_text);
                 $suffix_text.show();
@@ -54,34 +54,33 @@
               }
             }
             xhr.send();
-          }else{
-            var jqxhr = $.post( drupalSettings.ai_search_block.submit_url,
+          } else {
+            var jqxhr = $.post(drupalSettings.ai_search_block.submit_url,
               {
                 query: $inputText,
                 stream: $stream,
                 block_id: $block_id,
               }
-              ,function(data) {
+              , function (data) {
                 $output_region.html(data.response);
                 $suffix_text.html(drupalSettings.ai_search_block.suffix_text);
                 $suffix_text.show();
               })
-              .done(function() {
+              .done(function () {
                 //alert( "second success" );
               })
-              .fail(function() {
+              .fail(function () {
                 //alert( "error" );
               })
-              .always(function() {
+              .always(function () {
                 //alert( "finished" );
               });
-            jqxhr.always(function() {
+            jqxhr.always(function () {
               //alert( "second finished" );
             });
           }
 
-        }
-        catch (e) {
+        } catch (e) {
 
         }
         e.stopImmediatePropagation();

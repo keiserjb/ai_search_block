@@ -4,35 +4,26 @@ declare(strict_types=1);
 
 namespace Drupal\ai_search_block;
 
+use Drupal\Component\Serialization\Json;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\TranslatableInterface;
+use Drupal\Core\Language\LanguageManagerInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Render\RendererInterface;
+use Drupal\Core\Session\AccountProxyInterface;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\TempStore\PrivateTempStoreFactory;
 use Drupal\ai\AiProviderPluginManager;
 use Drupal\ai\OperationType\Chat\ChatInput;
 use Drupal\ai\OperationType\Chat\ChatMessage;
 use Drupal\ai\OperationType\Chat\StreamedChatMessageIteratorInterface;
-use Drupal\Component\Serialization\Json;
-use Drupal\Core\Cache\CacheBackendInterface;
-use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\Core\Entity\ContentEntityBase;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
-use Drupal\Core\Entity\TranslatableInterface;
-use Drupal\Core\Language\LanguageManagerInterface;
-use Drupal\Core\Logger\LoggerChannelInterface;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Drupal\Core\Render\RendererInterface;
-use Drupal\Core\TempStore\PrivateTempStoreFactory;
-use Drupal\search_api\Entity\Index;
-use Drupal\search_api\Item\ItemInterface;
-use Drupal\search_api\Query\ResultSet;
-use Drupal\search_api\Query\ResultSetInterface;
-use Exception;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use League\HTMLToMarkdown\Converter\TableConverter;
 use League\HTMLToMarkdown\HtmlConverter;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use Drupal\Core\Session\AccountProxyInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The Helper service to do RA stuff.
@@ -42,15 +33,15 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   use StringTranslationTrait;
 
   public function __construct(
-    protected PrivateTempStoreFactory    $tmpStore,
+    protected PrivateTempStoreFactory $tmpStore,
     protected EntityTypeManagerInterface $entityTypeManager,
-    protected RendererInterface          $renderer,
-    protected HtmlConverter              $converter,
-    protected AiProviderPluginManager    $aiProviderManager,
-    protected RequestStack               $requestStack,
-    protected LanguageManagerInterface   $languageManager,
-    protected AccountProxyInterface      $currentUser,
-    protected ConfigFactoryInterface     $configFactory,
+    protected RendererInterface $renderer,
+    protected HtmlConverter $converter,
+    protected AiProviderPluginManager $aiProviderManager,
+    protected RequestStack $requestStack,
+    protected LanguageManagerInterface $languageManager,
+    protected AccountProxyInterface $currentUser,
+    protected ConfigFactoryInterface $configFactory,
   ) {
     $this->converter->getConfig()->setOption('strip_tags', TRUE);
     $this->converter->getConfig()->setOption('strip_placeholder_links', TRUE);
@@ -75,7 +66,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   }
 
   /**
-   *
+   * Set the config for this Search.
    */
   public function setConfig($config) {
     $this->configuration = $config;
@@ -89,22 +80,26 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $rag_database = $this->configuration;
     }
     if (!isset($rag_database)) {
-      return $this->GiveMeAnError('[ERROR] No RAG database found.');
+      return $this->giveMeAnError('[ERROR] No RAG database found.');
     }
     $results = $this->getRagResults($rag_database, $query);
     $min_results = $this->configuration['min_results'];
     if ($results->getResultCount() < $min_results) {
-      return $this->GiveMeAnError($this->configuration['no_results_message']);
+      return $this->giveMeAnError($this->configuration['no_results_message']);
     }
     return $this->renderRagResponseAsString($results, $query, $rag_database);
   }
 
   /**
-   * @param $msg
+   * Returns the errors.
    *
-   * @return JsonResponse
+   * @param string $msg
+   *   The message for the error.
+   *
+   * @return \Drupal\Component\Serialization\JsonResponse
+   *   The Json response.
    */
-  public function GiveMeAnError($msg) {
+  public function giveMeAnError($msg): JsonResponse {
     $item = [];
     $item['answer_piece'] = $msg;
     return new JsonResponse(['response' => $item], 500);
@@ -113,14 +108,14 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   /**
    * Full entity check with a LLM checking the rendered entity.
    *
-   * @param ItemInterface[] $result_items
+   * @param \Drupal\search_api\Item\ItemInterface[] $result_items
    *   The result to check.
    * @param string $query_string
    *   The query to search for.
    * @param array $rag_database
    *   The RAG database array data.
    *
-   * @return StreamedResponse
+   * @return \Symfony\Component\HttpFoundation\StreamedResponse
    *   The response.
    */
   protected function fullEntityCheck(array $result_items, string $query_string, array $rag_database) {
@@ -131,7 +126,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       // @todo probably exists a function for this.
       [, $entity_parts, $lang] = explode(':', $entity_string);
       [$entity_type, $entity_id] = explode('/', $entity_parts);
-      /** @var ContentEntityBase */
+      /** @var \Drupal\Core\Entity\ContentEntityBase */
       $entity = $this->entityTypeManager->getStorage($entity_type)
         ->load($entity_id);
 
@@ -263,16 +258,16 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * @param string $query_string
    *   The query to search for (optional).
    *
-   * @return ResultSetInterface
+   * @return \Drupal\search_api\Query\ResultSetInterface
    *   The RAG response.
    */
   protected function getRagResults(array $rag_database, string $query_string = '') {
-    /** @var Index */
+    /** @var \Drupal\search_api\Entity\Index */
     $rag_storage = $this->entityTypeManager->getStorage('search_api_index');
 
     $index = $rag_storage->load($rag_database['database']);
     if (!$index) {
-      throw new Exception('RAG database not found.');
+      throw new \Exception('RAG database not found.');
     }
 
     try {
@@ -285,8 +280,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $query->keys($queries);
       $results = $query->execute();
     }
-    catch (Exception $e) {
-      throw new Exception('Failed to search: ' . $e->getMessage());
+    catch (\Exception $e) {
+      throw new \Exception('Failed to search: ' . $e->getMessage());
     }
     return $results;
   }
@@ -294,7 +289,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   /**
    * Render the RAG response as string.
    *
-   * @param ResultSet $results
+   * @param \Drupal\search_api\Query\ResultSet $results
    *   The RAG results.
    * @param string $query
    *   The query to search for (optional).

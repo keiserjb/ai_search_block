@@ -2,21 +2,9 @@
 
 namespace Drupal\ai_search_block\Plugin\Block;
 
-use Drupal\ai_assistant_api\AiAssistantApiRunner;
-use Drupal\ai_search_block\Form\SearchForm;
-use Drupal\Core\Block\Annotation\Block;
-use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Block\BlockBase;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\File\FileUrlGenerator;
-use Drupal\Core\Form\FormBuilderInterface;
-use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Link;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-use Drupal\Core\Session\AccountProxyInterface;
-use Drupal\Core\Url;
-use Drupal\layout_builder\Form\UpdateBlockForm;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -41,15 +29,14 @@ class SearchResponseBlock extends BlockBase implements ContainerFactoryPluginInt
   /**
    * {@inheritdoc}
    */
-  public function defaultConfiguration() {
-    return [
-    ];
+  public function defaultConfiguration(): array {
+    return [];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function blockForm($form, FormStateInterface $form_state) {
+  public function blockForm($form, FormStateInterface $form_state):array {
     return $form;
   }
 
