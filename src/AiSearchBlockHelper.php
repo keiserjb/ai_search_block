@@ -33,8 +33,9 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   use StringTranslationTrait;
 
   /**
-   * @var array $configuration
-   *   The configuration parameters passed in.
+   * The configuration parameters passed in.
+   *
+   *  @var array $configuration
    */
   private $configuration;
 
