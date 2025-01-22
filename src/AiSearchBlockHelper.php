@@ -35,7 +35,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   /**
    * The configuration parameters passed in.
    *
-   *  @var array
+   * @var array
    */
   private $configuration;
 
