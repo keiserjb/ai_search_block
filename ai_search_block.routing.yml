@@ -1,12 +1,3 @@
-ai_search_block.test:
-  path: '/ai-search-block-test'
-  defaults:
-    _form: 'Drupal\ai_search_block\Form\SearchForm'
-    _title: 'Seach form test'
-  requirements:
-    _permission: 'access content'
-    _access: 'TRUE'
-
 ai_search_block.api:
   path: '/ai-search-block/query'
   defaults:
