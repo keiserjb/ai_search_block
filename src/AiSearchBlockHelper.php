@@ -32,6 +32,12 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
 
   use StringTranslationTrait;
 
+  /**
+   * @var array $configuration
+   *   The configuration parameters passed in.
+   */
+  private $configuration;
+
   public function __construct(
     protected PrivateTempStoreFactory $tmpStore,
     protected EntityTypeManagerInterface $entityTypeManager,
@@ -311,6 +317,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     if (!empty($result_items)) {
       return $this->fullEntityCheck($result_items, $query, $rag_database);
     }
+    return '';
   }
 
 }
