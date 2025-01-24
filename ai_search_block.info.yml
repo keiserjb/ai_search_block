@@ -7,4 +7,4 @@ package: AI (Experimental)
 dependencies:
   - ai:ai
   - search_api:search_api
-  - ai_search:ai_search
+  - ai:ai_search
