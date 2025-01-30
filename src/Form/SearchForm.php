@@ -54,10 +54,9 @@ class SearchForm extends FormBase {
   public function buildForm(array $form, FormStateInterface $form_state): array {
     $response_id = Html::getId($form_state->getBuildInfo()['block_id'] . '-response');
     $search_block_config = $form_state->getBuildInfo()['search_config'];
-
     $form['stream'] = [
       '#type' => 'hidden',
-      '#value' => $search_block_config['stream'],
+      '#value' => $search_block_config['stream'] == 1 ? 'true' : 'false',
     ];
     $form['block_id'] = [
       '#type' => 'hidden',

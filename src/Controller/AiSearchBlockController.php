@@ -88,7 +88,7 @@ class AiSearchBlockController extends ControllerBase {
       $settings = $block->get('settings');
       $this->searchBlockHelper->setConfig($settings);
       $results = $this->searchBlockHelper->searchRagAction($query);
-      if ($stream) {
+      if ($stream == "true" || $stream == "TRUE") {
         header('X-Accel-Buffering: no');
         // Making maximum execution time unlimited.
         set_time_limit(0);

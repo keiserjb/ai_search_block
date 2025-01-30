@@ -1,20 +1,17 @@
-(function ($, Drupal) {
+(function ($, Drupal, once) {
   Drupal.behaviors.aiSearchBlock = {
     attach: function (context, settings) {
-      if (context !== document) {
-        return;
-      }
       let $suffix_text = $('#ai-search-block-response .suffix_text');
       $suffix_text.hide();
       let $output_region = $('#ai-search-block-response .ai-search-block-output');
 
-      $('.ai-search-block-form').submit(function (e) {
+      $('.ai-search-block-form').removeAttr('onsubmit').submit(function (e) {
         e.preventDefault();
         let $form = $(e.currentTarget);
         $output_region.html('<p class="loading_text"><span class="loader"></span>' + drupalSettings.ai_search_block.loading_text + '</p>');
         const $input = $form.find('[data-drupal-selector="edit-query"]');
         const $inputText = $input.val();
-        const $stream = $form.find('[data-drupal-selector="edit-stream"]').val();
+        const $stream = $form.find('[data-drupal-selector="edit-stream"]').val() === 'true';
         const $block_id = $form.find('[data-drupal-selector="edit-block-id"]').val();
         try {
           if ($stream) {
@@ -55,6 +52,7 @@
             }
             xhr.send();
           } else {
+            console.log('no stream');
             var jqxhr = $.post(drupalSettings.ai_search_block.submit_url,
               {
                 query: $inputText,
@@ -88,4 +86,4 @@
       });
     }
   };
-})(jQuery, Drupal);
+})(jQuery, Drupal, once);

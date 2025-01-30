@@ -282,7 +282,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
         'limit' => $this->configuration['max_results'],
       ]);
       $query->setOption('search_api_bypass_access', ($this->configuration['access_check'] == 'false'));
-      $query->setOption('search_api_ai_get_chunks_result', $this->configuration['output_mode'] == 'chunks');
+      $query->setOption('search_api_ai_get_chunks_result', 'rendered');
       $queries = $query_string;
       $query->keys($queries);
       $results = $query->execute();
