@@ -8,6 +8,7 @@ use Drupal\Component\Serialization\Json;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\TranslatableInterface;
+use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Render\RendererInterface;
@@ -31,7 +32,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
 
   use StringTranslationTrait;
-
   /**
    * The configuration parameters passed in.
    *
@@ -49,6 +49,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     protected LanguageManagerInterface $languageManager,
     protected AccountProxyInterface $currentUser,
     protected ConfigFactoryInterface $configFactory,
+    protected ModuleHandlerInterface $moduleHandler,
   ) {
     $this->converter->getConfig()->setOption('strip_tags', TRUE);
     $this->converter->getConfig()->setOption('strip_placeholder_links', TRUE);
@@ -69,6 +70,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $container->get('language_manager'),
       $container->get('current_user'),
       $container->get('config.factory'),
+      $container->get('module_handler'),
     );
   }
 
@@ -153,6 +155,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $rendered = $this->renderer->render($pre_render_entity);
       $rendered_entities[] = $this->converter->convert((string) $rendered);
     }
+    $this->moduleHandler->alter('ai_search_block_entities', $rendered_entities);
 
     $message = str_replace([
       '[question]',
@@ -195,6 +198,9 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     foreach ($this->configuration as $key => $val) {
       $config[$key] = $val;
     }
+
+    $this->moduleHandler->alter('ai_search_block_prompt', $message);
+
     $input = new ChatInput([
       new ChatMessage('user', $message),
     ]);

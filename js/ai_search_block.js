@@ -52,7 +52,6 @@
             }
             xhr.send();
           } else {
-            console.log('no stream');
             var jqxhr = $.post(drupalSettings.ai_search_block.submit_url,
               {
                 query: $inputText,
