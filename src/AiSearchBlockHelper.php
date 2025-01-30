@@ -152,10 +152,12 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $view_mode = $this->configuration['aggregated_llm'] ?? 'full';
       $pre_render_entity = $this->entityTypeManager->getViewBuilder($entity_type)
         ->view($entity, $view_mode);
-      $rendered = $this->renderer->render($pre_render_entity);
-      $rendered_entities[] = $this->converter->convert((string) $rendered);
+      $rendered = $this->renderer->render($rendered);
+      $this->moduleHandler->alter('ai_search_block_entity_html', $rendered, $entity);
+      $markdown = $this->converter->convert((string) $rendered);
+      $this->moduleHandler->alter('ai_search_block_entity_markdown', $markdown, $entity);
+      $rendered_entities[] = $markdown;
     }
-    $this->moduleHandler->alter('ai_search_block_entities', $rendered_entities);
 
     $message = str_replace([
       '[question]',

@@ -9,10 +9,11 @@ function hook_ai_search_block_prompt_alter(&$prompt) {
   $prompt = str_replace('[my custom token]', $variable, $prompt);
 }
 
-/**
- * Implements hook_ai_search_block_entities_alter
- */
-function hook_ai_search_block_entities_alter(&$entities) {
-  dd($entities);
-  // Alter the loaded entities before we put theim into the prompt.
+
+function hook_ai_search_block_entity_html_alter(&$rendered_entity, $entity){
+  //change the html for the entity
+}
+
+function hook_ai_search_block_entity_markdown_alter(&$rendered_entity, $entity){
+  //change the markdown for the entity
 }
