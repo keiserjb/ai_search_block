@@ -87,6 +87,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'placeholder' => 'Ask me a question about your subject here!',
       'submit_text' => 'Ask question',
       'loading_text' => 'Loading',
+      'suffix_text' => 'Done',
       'stream' => TRUE,
       'database' => NULL,
       'score_threshold' => 0.6,
