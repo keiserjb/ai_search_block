@@ -77,7 +77,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   /**
    * Set the config for this Search.
    *
-   * @param $config
+   * @param array $config
    * The array wth configuration.
    *
    * @return void
@@ -89,10 +89,11 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   /**
    * Take rag action.
    *
-   * @param $query
+   * @param string $query
    *   The question from the user.
    *
    * @return \Drupal\Component\Serialization\JsonResponse|string|\Symfony\Component\HttpFoundation\StreamedResponse
+   *
    * @throws \Exception
    */
   public function searchRagAction($query) {
@@ -272,8 +273,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * @return string
    */
   private function cleanupMarkdown($markdown, $entity) {
-
-    // first cleanup multiple empty lines.
+    // First cleanup multiple empty lines.
     $lines = explode(PHP_EOL, $markdown);
     $newlines = [];
     $prev = NULL;
@@ -383,10 +383,12 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * Streams back the response so it comes to the frontend nice and fluid.
    *
    * @param array|StreamedChatMessageIteratorInterface $parts
+   *   Iterable list of parts.
    * @param string $type
+   *   String for simple strings or Streamed responses from AI or other systems.
    *
    * @return \Symfony\Component\HttpFoundation\StreamedResponse
-   * The response stream.
+   *   The response stream.
    */
   private function streamBackResponse($parts, $type = 'Message') {
     return new StreamedResponse(function () use ($type, $parts) {
