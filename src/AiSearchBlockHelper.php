@@ -78,9 +78,10 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * Set the config for this Search.
    *
    * @param array $config
-   * The array wth configuration.
+   *   The array wth configuration.
    *
    * @return void
+   *   No return needed.
    */
   public function setConfig($config) {
     $this->configuration = $config;
@@ -93,6 +94,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    *   The question from the user.
    *
    * @return \Drupal\Component\Serialization\JsonResponse|string|\Symfony\Component\HttpFoundation\StreamedResponse
+   *   The streamed response.
    *
    * @throws \Exception
    */
@@ -250,12 +252,13 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   /**
    * Clean up the HTML of the rendered entity.
    *
-   * @param $html
+   * @param string $html
    *   The HTML.
-   * @param $entity
+   * @param \Drupal\Core\Entity\EntityType $entity
    *   The entity (context))
    *
    * @return mixed
+   *   The cleaned up html.
    */
   private function cleanupHtml($html, $entity) {
     $this->moduleHandler->alter('ai_search_block_entity_html', $html, $entity);
@@ -265,12 +268,13 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   /**
    * Clean up the markdown of the entity.
    *
-   * @param $markdown
+   * @param string $markdown
    *   The markdown that will end up in the prompt.
-   * @param $entity
+   * @param \Drupal\Core\Entity\EntityType $entity
    *   The context entity.
    *
    * @return string
+   *   The cleaned markdown.
    */
   private function cleanupMarkdown($markdown, $entity) {
     // First cleanup multiple empty lines.
@@ -280,7 +284,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     foreach ($lines as $line) {
       $newline = trim($line, '\t');
       if ($prev == $newline && $newline == '') {
-        continue; // Implicit cleanup of duplicate empty lines.
+        continue;
+        // Implicit cleanup of duplicate empty lines.
       }
       $newlines[] = $newline;
       $prev = $newline;
