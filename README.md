@@ -25,6 +25,8 @@ Check `ai_search_block_wrapper` and `ai_search_block_response`.
 
 
 ### Alter the rendered html from the nodes before we turn it into markdown.
+
+This example snippet removes comments and <selects with all their <options> from the html..
 ````
 function ai_search_block_ai_search_block_entity_html_alter(&$rendered_entity, $entity){
   $lines = explode(PHP_EOL, $rendered_entity);
@@ -42,6 +44,8 @@ function ai_search_block_ai_search_block_entity_html_alter(&$rendered_entity, $e
 ````
 
 ### Alter the markdown of the entity before it goes into the query
+
+This example snippet cleans up multiple empty lines into one empty line.
 ````
 function ai_search_block_ai_search_block_entity_markdown_alter(&$markdown, $entity){
   $lines = explode(PHP_EOL, $markdown);
@@ -61,8 +65,12 @@ function ai_search_block_ai_search_block_entity_markdown_alter(&$markdown, $enti
 
 ### Alter the prompt that will be used in the end:
 
+This example snippet replaces a self invented "Token" that is in the block config
+to replace it with the current time.
 ````
 function ai_search_block_ai_search_block_prompt_alter(string &$prompt) {
+  $variable = time();
+  $prompt = str_replace('[my_custom_token]', $variable, $prompt);
 }
 ````
 
