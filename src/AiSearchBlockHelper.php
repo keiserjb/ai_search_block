@@ -22,7 +22,6 @@ use Drupal\ai\OperationType\Chat\StreamedChatMessageIteratorInterface;
 use League\HTMLToMarkdown\Converter\TableConverter;
 use League\HTMLToMarkdown\HtmlConverter;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -77,6 +76,11 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
 
   /**
    * Set the config for this Search.
+   *
+   * @param $config
+   * The array wth configuration.
+   *
+   * @return void
    */
   public function setConfig($config) {
     $this->configuration = $config;
@@ -84,6 +88,12 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
 
   /**
    * Take rag action.
+   *
+   * @param $query
+   *   The question from the user.
+   *
+   * @return \Drupal\Component\Serialization\JsonResponse|string|\Symfony\Component\HttpFoundation\StreamedResponse
+   * @throws \Exception
    */
   public function searchRagAction($query) {
     if (!empty($this->configuration['database'])) {
@@ -111,7 +121,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    */
   public function giveMeAnError($msg) {
     $parts = str_split($msg, 4);
-    return $this->StreamBackResponse($parts, 'string');
+    return $this->streamBackResponse($parts, 'string');
   }
 
   /**
@@ -221,7 +231,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
       $response = $output->getNormalized();
       if (is_object($response) && $response instanceof StreamedChatMessageIteratorInterface) {
-        return $this->StreamBackResponse($response);
+        return $this->streamBackResponse($response);
       }
       else {
         $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
@@ -236,11 +246,31 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     }
   }
 
+  /**
+   * Clean up the HTML of the rendered entity.
+   *
+   * @param $html
+   *   The HTML.
+   * @param $entity
+   *   The entity (context))
+   *
+   * @return mixed
+   */
   private function cleanupHtml($html, $entity) {
     $this->moduleHandler->alter('ai_search_block_entity_html', $html, $entity);
     return $html;
   }
 
+  /**
+   * Clean up the markdown of the entity.
+   *
+   * @param $markdown
+   *   The markdown that will end up in the prompt.
+   * @param $entity
+   *   The context entity.
+   *
+   * @return string
+   */
   private function cleanupMarkdown($markdown, $entity) {
 
     // first cleanup multiple empty lines.
@@ -256,7 +286,6 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $prev = $newline;
     }
     $markdown = implode(PHP_EOL, $newlines);
-
     $this->moduleHandler->alter('ai_search_block_entity_markdown', $markdown, $entity);
     return $markdown;
   }
@@ -289,13 +318,16 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    *
    * @param array $rag_database
    *   The RAG database array data.
-   * @param string $query_string
+   * @param \Drupal\ai_search_block\string $query_string
    *   The query to search for (optional).
    *
    * @return \Drupal\search_api\Query\ResultSetInterface
    *   The RAG response.
+   * 
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
-  protected function getRagResults(array $rag_database, string $query_string = '') {
+  protected function getRagResults(array $rag_database, string $query_string) {
     /** @var \Drupal\search_api\Entity\Index */
     $rag_storage = $this->entityTypeManager->getStorage('search_api_index');
     $index = $rag_storage->load($rag_database['database']);
@@ -312,7 +344,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $queries = $query_string;
       $query->keys($queries);
       $results = $query->execute();
-    } catch (\Exception $e) {
+    }
+    catch (\Exception $e) {
       throw new \Exception('Failed to search: ' . $e->getMessage());
     }
     return $results;
@@ -343,18 +376,19 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       return $this->fullEntityCheck($result_items, $query, $rag_database);
     }
     $parts = str_split($this->configuration['no_results_message'], 4);
-    return $this->StreamBackResponse($parts, 'string');
+    return $this->streamBackResponse($parts, 'string');
   }
 
   /**
-   * Stream back the response.
+   * Streams back the response so it comes to the frontend nice and fluid.
    *
-   * @param $parts
-   * @param $type
+   * @param array|StreamedChatMessageIteratorInterface $parts
+   * @param string $type
    *
    * @return \Symfony\Component\HttpFoundation\StreamedResponse
+   * The response stream.
    */
-  private function StreamBackResponse($parts, $type = 'Message') {
+  private function streamBackResponse($parts, $type = 'Message') {
     return new StreamedResponse(function () use ($type, $parts) {
       foreach ($parts as $part) {
         $item = [];
