@@ -12,8 +12,8 @@ Make sure you have a
 
 ## Usage
 
-1. Type a searchterm into the search form
-2. See the reponse streaming back into the response area.
+1. Type a search term into the search form
+2. See the response streaming back into the response area.
 
 
 ## Extending the module.
