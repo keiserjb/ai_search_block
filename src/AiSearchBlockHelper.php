@@ -32,6 +32,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
 
   use StringTranslationTrait;
+
   /**
    * The configuration parameters passed in.
    *
@@ -40,16 +41,16 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   private $configuration;
 
   public function __construct(
-    protected PrivateTempStoreFactory $tmpStore,
+    protected PrivateTempStoreFactory    $tmpStore,
     protected EntityTypeManagerInterface $entityTypeManager,
-    protected RendererInterface $renderer,
-    protected HtmlConverter $converter,
-    protected AiProviderPluginManager $aiProviderManager,
-    protected RequestStack $requestStack,
-    protected LanguageManagerInterface $languageManager,
-    protected AccountProxyInterface $currentUser,
-    protected ConfigFactoryInterface $configFactory,
-    protected ModuleHandlerInterface $moduleHandler,
+    protected RendererInterface          $renderer,
+    protected HtmlConverter              $converter,
+    protected AiProviderPluginManager    $aiProviderManager,
+    protected RequestStack               $requestStack,
+    protected LanguageManagerInterface   $languageManager,
+    protected AccountProxyInterface      $currentUser,
+    protected ConfigFactoryInterface     $configFactory,
+    protected ModuleHandlerInterface     $moduleHandler,
   ) {
     $this->converter->getConfig()->setOption('strip_tags', TRUE);
     $this->converter->getConfig()->setOption('strip_placeholder_links', TRUE);
@@ -141,12 +142,12 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $entity_list[$entity_id] = [
         'lang' => $lang,
         'entity' => $entity,
-        'entity_type' => $entity_type
+        'entity_type' => $entity_type,
       ];
     }
 
     // $entities are filtered now
-    foreach($entity_list as $entity_id => $entity_array) {
+    foreach ($entity_list as $entity_id => $entity_array) {
       $lang = $entity_array['lang'];
       $entity = $entity_array['entity'];
       $entity_type = $entity_array['entity_type'];
@@ -235,12 +236,12 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     }
   }
 
-  private function cleanupHtml($html, $entity){
+  private function cleanupHtml($html, $entity) {
     $this->moduleHandler->alter('ai_search_block_entity_html', $html, $entity);
     return $html;
   }
 
-  private function cleanupMarkdown($markdown, $entity){
+  private function cleanupMarkdown($markdown, $entity) {
 
     // first cleanup multiple empty lines.
     $lines = explode(PHP_EOL, $markdown);
@@ -248,7 +249,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     $prev = NULL;
     foreach ($lines as $line) {
       $newline = trim($line, '\t');
-      if  ($prev == $newline && $newline == '') {
+      if ($prev == $newline && $newline == '') {
         continue; // Implicit cleanup of duplicate empty lines.
       }
       $newlines[] = $newline;
@@ -311,8 +312,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $queries = $query_string;
       $query->keys($queries);
       $results = $query->execute();
-    }
-    catch (\Exception $e) {
+    } catch (\Exception $e) {
       throw new \Exception('Failed to search: ' . $e->getMessage());
     }
     return $results;
@@ -334,7 +334,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   protected function renderRagResponseAsString($results, string $query, array $rag_database) {
     $result_items = [];
     foreach ($results->getResultItems() as $result) {
-      if ((float)$this->configuration['score_threshold'] > $result->getScore()) {
+      if ((float) $this->configuration['score_threshold'] > $result->getScore()) {
         continue;
       }
       $result_items[] = $result;
@@ -354,14 +354,15 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    *
    * @return \Symfony\Component\HttpFoundation\StreamedResponse
    */
-  private function StreamBackResponse($parts, $type = 'Message'){
+  private function StreamBackResponse($parts, $type = 'Message') {
     return new StreamedResponse(function () use ($type, $parts) {
       foreach ($parts as $part) {
         $item = [];
         $item['in_html'] = FALSE;
         if ($type == 'string') {
           $item['answer_piece'] = $part;
-        }else{
+        }
+        else {
           $item['answer_piece'] = $part->getText();
         }
         $out = Json::encode($item);
@@ -369,7 +370,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
         echo $out . '|§|';
         ob_flush();
         flush();
-        if ($type == 'string'){
+        if ($type == 'string') {
           usleep(50000);
         }
       }
