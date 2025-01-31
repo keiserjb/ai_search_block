@@ -36,7 +36,7 @@ class SearchResponseBlock extends BlockBase implements ContainerFactoryPluginInt
   /**
    * {@inheritdoc}
    */
-  public function blockForm($form, FormStateInterface $form_state):array {
+  public function blockForm($form, FormStateInterface $form_state): array {
     return $form;
   }
 
