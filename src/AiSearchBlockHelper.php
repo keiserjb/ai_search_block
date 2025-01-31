@@ -109,7 +109,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    *   The Json response.
    */
   public function giveMeAnError($msg) {
-    return $this->StreamBackResponse([$msg], 'string');
+    $parts = str_split($msg, 4);
+    return $this->StreamBackResponse($parts, 'string');
   }
 
   /**
@@ -343,7 +344,9 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
         echo $out . '|§|';
         ob_flush();
         flush();
-        usleep(50000);
+        if ($type == 'string'){
+          usleep(50000);
+        }
       }
     }, 200, [
       'Cache-Control' => 'no-cache, must-revalidate',
