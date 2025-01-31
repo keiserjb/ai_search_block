@@ -40,16 +40,16 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   private $configuration;
 
   public function __construct(
-    protected PrivateTempStoreFactory    $tmpStore,
+    protected PrivateTempStoreFactory $tmpStore,
     protected EntityTypeManagerInterface $entityTypeManager,
-    protected RendererInterface          $renderer,
-    protected HtmlConverter              $converter,
-    protected AiProviderPluginManager    $aiProviderManager,
-    protected RequestStack               $requestStack,
-    protected LanguageManagerInterface   $languageManager,
-    protected AccountProxyInterface      $currentUser,
-    protected ConfigFactoryInterface     $configFactory,
-    protected ModuleHandlerInterface     $moduleHandler,
+    protected RendererInterface $renderer,
+    protected HtmlConverter $converter,
+    protected AiProviderPluginManager $aiProviderManager,
+    protected RequestStack $requestStack,
+    protected LanguageManagerInterface $languageManager,
+    protected AccountProxyInterface $currentUser,
+    protected ConfigFactoryInterface $configFactory,
+    protected ModuleHandlerInterface $moduleHandler,
   ) {
     $this->converter->getConfig()->setOption('strip_tags', TRUE);
     $this->converter->getConfig()->setOption('strip_placeholder_links', TRUE);
@@ -323,7 +323,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    *
    * @return \Drupal\search_api\Query\ResultSetInterface
    *   The RAG response.
-   * 
+   *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */

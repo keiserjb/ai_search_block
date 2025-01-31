@@ -27,7 +27,7 @@ class SearchForm extends FormBase {
    */
   public function __construct(
     private readonly EntityTypeManagerInterface $entityTypeManager,
-    private readonly RouteMatchInterface        $routeMatcher,
+    private readonly RouteMatchInterface $routeMatcher,
   ) {
   }
 
