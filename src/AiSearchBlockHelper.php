@@ -108,10 +108,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * @return \Drupal\Component\Serialization\JsonResponse
    *   The Json response.
    */
-  public function giveMeAnError($msg): JsonResponse {
-    $item = [];
-    $item['answer_piece'] = $msg;
-    return new JsonResponse(['response' => $item], 500);
+  public function giveMeAnError($msg) {
+    return $this->StreamBackResponse([$msg], 'string');
   }
 
   /**
@@ -139,11 +137,18 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       /** @var \Drupal\Core\Entity\ContentEntityBase */
       $entity = $this->entityTypeManager->getStorage($entity_type)
         ->load($entity_id);
-      $entity_list[$entity_id] = $entity;
+      $entity_list[$entity_id] = [
+        'lang' => $lang,
+        'entity' => $entity,
+        'entity_type' => $entity_type
+      ];
     }
-    // $entities are filtered now
 
-    foreach($entity_list as $entity_id => $entity) {
+    // $entities are filtered now
+    foreach($entity_list as $entity_id => $entity_array) {
+      $lang = $entity_array['lang'];
+      $entity = $entity_array['entity'];
+      $entity_type = $entity_array['entity_type'];
       // Get translated if possible.
       if (
         $entity instanceof TranslatableInterface
@@ -204,9 +209,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     foreach ($this->configuration as $key => $val) {
       $config[$key] = $val;
     }
-
     $this->moduleHandler->alter('ai_search_block_prompt', $message);
-
     $input = new ChatInput([
       new ChatMessage('user', $message),
     ]);
@@ -216,22 +219,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
       $response = $output->getNormalized();
       if (is_object($response) && $response instanceof StreamedChatMessageIteratorInterface) {
-        return new StreamedResponse(function () use ($response) {
-          foreach ($response as $message) {
-            $item = [];
-            $item['in_html'] = FALSE;
-            $item['answer_piece'] = $message->getText();
-            $out = Json::encode($item);
-            unset($item);
-            echo $out . '|§|';
-            ob_flush();
-            flush();
-          }
-        }, 200, [
-          'Cache-Control' => 'no-cache, must-revalidate',
-          'Content-Type' => 'text/event-stream',
-          'X-Accel-Buffering' => 'no',
-        ]);
+        return $this->StreamBackResponse($response);
       }
       else {
         $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
@@ -283,7 +271,6 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   protected function getRagResults(array $rag_database, string $query_string = '') {
     /** @var \Drupal\search_api\Entity\Index */
     $rag_storage = $this->entityTypeManager->getStorage('search_api_index');
-
     $index = $rag_storage->load($rag_database['database']);
     if (!$index) {
       throw new \Exception('RAG database not found.');
@@ -321,8 +308,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   protected function renderRagResponseAsString($results, string $query, array $rag_database) {
     $result_items = [];
     foreach ($results->getResultItems() as $result) {
-      // Filter the results.
-      if ($this->configuration['score_threshold'] > $result->getScore()) {
+      if ((float)$this->configuration['score_threshold'] > $result->getScore()) {
         continue;
       }
       $result_items[] = $result;
@@ -330,7 +316,40 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     if (!empty($result_items)) {
       return $this->fullEntityCheck($result_items, $query, $rag_database);
     }
-    return '';
+    $parts = str_split($this->configuration['no_results_message'], 4);
+    return $this->StreamBackResponse($parts, 'string');
+  }
+
+  /**
+   * Stream back the response.
+   *
+   * @param $parts
+   * @param $type
+   *
+   * @return \Symfony\Component\HttpFoundation\StreamedResponse
+   */
+  private function StreamBackResponse($parts, $type = 'Message'){
+    return new StreamedResponse(function () use ($type, $parts) {
+      foreach ($parts as $part) {
+        $item = [];
+        $item['in_html'] = FALSE;
+        if ($type == 'string') {
+          $item['answer_piece'] = $part;
+        }else{
+          $item['answer_piece'] = $part->getText();
+        }
+        $out = Json::encode($item);
+        unset($item);
+        echo $out . '|§|';
+        ob_flush();
+        flush();
+        usleep(50000);
+      }
+    }, 200, [
+      'Cache-Control' => 'no-cache, must-revalidate',
+      'Content-Type' => 'text/event-stream',
+      'X-Accel-Buffering' => 'no',
+    ]);
   }
 
 }
