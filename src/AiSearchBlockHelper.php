@@ -163,9 +163,9 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $pre_render_entity = $this->entityTypeManager->getViewBuilder($entity_type)
         ->view($entity, $view_mode);
       $rendered = $this->renderer->render($pre_render_entity);
-      $this->moduleHandler->alter('ai_search_block_entity_html', $rendered, $entity);
+      $rendered = $this->cleanupHtml($rendered, $entity);
       $markdown = $this->converter->convert((string) $rendered);
-      $this->moduleHandler->alter('ai_search_block_entity_markdown', $markdown, $entity);
+      $markdown = $this->cleanupMarkdown($markdown, $entity);
       $rendered_entities[] = $markdown;
     }
 
@@ -233,6 +233,31 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $response = $output->getNormalized()->getText() . "\n";
       return $response;
     }
+  }
+
+  private function cleanupHtml($html, $entity){
+    $this->moduleHandler->alter('ai_search_block_entity_html', $html, $entity);
+    return $html;
+  }
+
+  private function cleanupMarkdown($markdown, $entity){
+
+    // first cleanup multiple empty lines.
+    $lines = explode(PHP_EOL, $markdown);
+    $newlines = [];
+    $prev = NULL;
+    foreach ($lines as $line) {
+      $newline = trim($line, '\t');
+      if  ($prev == $newline && $newline == '') {
+        continue; // Implicit cleanup of duplicate empty lines.
+      }
+      $newlines[] = $newline;
+      $prev = $newline;
+    }
+    $markdown = implode(PHP_EOL, $newlines);
+
+    $this->moduleHandler->alter('ai_search_block_entity_markdown', $markdown, $entity);
+    return $markdown;
   }
 
   /**
