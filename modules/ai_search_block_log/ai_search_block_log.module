@@ -1,0 +1,57 @@
+<?php
+
+
+use Drupal\Core\Render\Element;
+
+/**
+ * Implements hook_theme().
+ */
+function ai_search_block_log_theme(): array {
+  return [
+    'ai_search_block_log' => ['render element' => 'elements'],
+  ];
+}
+
+/**
+ * Prepares variables for ai search block log templates.
+ *
+ * Default template: ai-search-block-log.html.twig.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - elements: An associative array containing the ai search block log
+ *   information and any fields attached to the entity.
+ *   - attributes: HTML attributes for the containing element.
+ */
+function template_preprocess_ai_search_block_log(array &$variables): void {
+  $variables['view_mode'] = $variables['elements']['#view_mode'];
+  foreach (Element::children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function ai_search_block_log_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+  if ('ai_search_block_form' == $form_id) {
+    if (\Drupal::moduleHandler()->moduleExists('ai_search_block_log')) {
+      $form['#attached']['library'][] = 'ai_search_block_log/ai_search_block_log_js';
+    }
+  }
+}
+
+function ai_search_block_log_start($block_id, $user, $query) {
+  $helper = \Drupal::service('ai_search_block_log.helper');
+  return $helper->start($block_id, $user, $query);
+}
+
+function ai_search_block_log_add_response($logId, $response) {
+  $helper = \Drupal::service('ai_search_block_log.helper');
+  return $helper->logResponse($logId, $response);
+}
+
+function ai_search_block_log_update($logId, $fields) {
+  $helper = \Drupal::service('ai_search_block_log.helper');
+  return $helper->update($logId, $fields);
+}

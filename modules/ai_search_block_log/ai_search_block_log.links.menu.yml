@@ -1,0 +1,11 @@
+entity.ai_search_block_log.settings:
+  title: 'AI Search Block Log'
+  description: 'Configure an AI Search Block Log entity type.'
+  route_name:  entity.ai_search_block_log.settings
+  parent: system.admin_structure
+
+entity.ai_search_block_log.collection:
+  title: 'AI Search Block Logs'
+  description: 'List of ai search block logs.'
+  route_name: entity.ai_search_block_log.collection
+  parent: system.admin_content
