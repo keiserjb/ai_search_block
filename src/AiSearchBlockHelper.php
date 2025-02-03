@@ -22,6 +22,7 @@ use Drupal\ai\OperationType\Chat\StreamedChatMessageIteratorInterface;
 use League\HTMLToMarkdown\Converter\TableConverter;
 use League\HTMLToMarkdown\HtmlConverter;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -38,6 +39,13 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * @var array
    */
   private $configuration;
+
+  public $logId;
+
+  private $blockId;
+
+  private $user;
+
 
   public function __construct(
     protected PrivateTempStoreFactory $tmpStore,
@@ -87,6 +95,10 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     $this->configuration = $config;
   }
 
+  public function setBlockId($block_id) {
+    $this->blockId = $block_id;
+  }
+
   /**
    * Take rag action.
    *
@@ -124,7 +136,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    */
   public function giveMeAnError($msg) {
     $parts = str_split($msg, 4);
-    return $this->streamBackResponse($parts, 'string');
+    return $this->streamBackResponse($parts, 'string', '', []);
   }
 
   /**
@@ -189,7 +201,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     ], [
       $query_string,
       implode("\n------------\n", $rendered_entities),
-    ], nl2br($this->configuration['aggregated_llm']));
+    ], $this->configuration['aggregated_llm']);
 
     foreach ($this->getPrePromptDrupalContext() as $key => $replace) {
       $message = str_replace('[' . $key . ']', is_null($replace) ? '' : $replace, $message);
@@ -234,18 +246,35 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
       $response = $output->getNormalized();
       if (is_object($response) && $response instanceof StreamedChatMessageIteratorInterface) {
-        return $this->streamBackResponse($response);
+        return $this->streamBackResponse($response, '$message', $message, array_keys($entity_list));
       }
       else {
+        // ai models that dont stream back?
         $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
         $response = $output->getNormalized()->getText() . "\n";
+        $this->logResponse($response, $message, array_keys($entity_list));
         return $response;
       }
     }
     else {
       $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
       $response = $output->getNormalized()->getText() . "\n";
-      return $response;
+      $this->logResponse($response, $message, array_keys($entity_list));
+      return new JsonResponse(
+        [
+          'response' => $response,
+          'log_id' => $this->logId,
+        ]);
+    }
+  }
+
+  private function logResponse($response, $prompt, $items) {
+    if ($this->moduleHandler->moduleExists('ai_search_block_log')) {
+      ai_search_block_log_update($this->logId, [
+        'prompt_used' => $prompt,
+        'response_given' => $response,
+        'detailed_output' => json_encode($items),
+      ]);
     }
   }
 
@@ -380,8 +409,24 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     if (!empty($result_items)) {
       return $this->fullEntityCheck($result_items, $query, $rag_database);
     }
-    $parts = str_split($this->configuration['no_results_message'], 4);
-    return $this->streamBackResponse($parts, 'string');
+
+    if ($this->configuration['stream']) {
+      $parts = str_split($this->configuration['no_results_message'], 4);
+      return $this->streamBackResponse($parts, 'string', '', $result_items);
+    }
+    else {
+      if ($this->moduleHandler->moduleExists('ai_search_block_log')) {
+        ai_search_block_log_update($this->logId, [
+          'response_given' =>
+            $this->configuration['no_results_message'],
+          'detailed_output' => json_encode($results),
+        ]);
+      }
+      return new JsonResponse([
+        'response' => $this->configuration['no_results_message'],
+        'log_id' => $this->logId,
+      ]);
+    }
   }
 
   /**
@@ -395,11 +440,13 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * @return \Symfony\Component\HttpFoundation\StreamedResponse
    *   The response stream.
    */
-  private function streamBackResponse($parts, $type = 'Message') {
-    return new StreamedResponse(function () use ($type, $parts) {
+  private function streamBackResponse($parts, $type = 'Message', $prompt, $result_items) {
+    return new StreamedResponse(function () use ($type, $parts, $prompt, $result_items) {
+      $log_output = '';
       foreach ($parts as $part) {
         $item = [];
         $item['in_html'] = FALSE;
+        $item['log_id'] = $this->logId;
         if ($type == 'string') {
           $item['answer_piece'] = $part;
         }
@@ -407,6 +454,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
           $item['answer_piece'] = $part->getText();
         }
         $out = Json::encode($item);
+        $log_output .= $item['answer_piece'];
         unset($item);
         echo $out . '|§|';
         ob_flush();
@@ -415,6 +463,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
           usleep(50000);
         }
       }
+      $this->logResponse($log_output, $prompt, $result_items);
     }, 200, [
       'Cache-Control' => 'no-cache, must-revalidate',
       'Content-Type' => 'text/event-stream',

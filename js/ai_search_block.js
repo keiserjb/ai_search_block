@@ -33,6 +33,7 @@
                 .filter(Boolean);
               const newUpdatesParsed = newUpdates.map((update) => {
                 const parsed = JSON.parse(update);
+                drupalSettings.ai_search_block.logId = parsed.log_id;
                 return parsed.answer_piece || '';
               });
               const joined = newUpdatesParsed.join('');
@@ -41,13 +42,16 @@
             xhr.onreadystatechange = function () {
               if (xhr.readyState == 4 && this.status == 200) {
                 $suffix_text.html(drupalSettings.ai_search_block.suffix_text);
+                Drupal.attachBehaviors($suffix_text[0]);
                 $suffix_text.show();
+                drupalSettings.ai_search_block.logId = data.log_id;
               }
               if (xhr.readyState == 4 && this.status == 500) {
                 $output_region.html('An error happened.');
                 console.log(xhr.responseText);
                 const parsed = JSON.parse(xhr.responseText);
                 $output_region.html(parsed.response.answer_piece);
+                Drupal.attachBehaviors($output_region[0]);
               }
             }
             xhr.send();
@@ -60,7 +64,9 @@
               }
               , function (data) {
                 $output_region.html(data.response);
+                drupalSettings.ai_search_block.logId = data.log_id;
                 $suffix_text.html(drupalSettings.ai_search_block.suffix_text);
+                Drupal.attachBehaviors($suffix_text[0]);
                 $suffix_text.show();
               })
               .done(function () {

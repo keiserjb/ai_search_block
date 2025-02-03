@@ -84,9 +84,16 @@ class AiSearchBlockController extends ControllerBase {
       $block_id = $data['block_id'];
     }
     $block = $this->blockEntity->load($block_id);
+    $logId = 0;
+    if (function_exists('ai_search_block_log_start')) {
+      $logId = ai_search_block_log_start($block_id, \Drupal::currentUser()
+        ->id(), $query);
+    }
     if ($block) {
       $settings = $block->get('settings');
       $this->searchBlockHelper->setConfig($settings);
+      $this->searchBlockHelper->setBlockId($block_id);
+      $this->searchBlockHelper->logId = $logId;
       $results = $this->searchBlockHelper->searchRagAction($query);
       if ($stream == "true" || $stream == "TRUE") {
         header('X-Accel-Buffering: no');
@@ -96,11 +103,18 @@ class AiSearchBlockController extends ControllerBase {
         return $results;
       }
       else {
-        return new JsonResponse(['response' => $results]);
+        return $results;
       }
     }
     else {
-      return new JsonResponse(['response' => 'There was an error fetching your data']);
+      if (function_exists('ai_search_block_log_add_response')) {
+        ai_search_block_log_add_response($logId, 'There was an error fetching your data');
+      }
+      return new JsonResponse(
+        [
+          'response' => 'There was an error fetching your data',
+          'log_id' => $logId,
+        ]);
     }
   }
 
