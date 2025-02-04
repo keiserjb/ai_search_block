@@ -53,7 +53,7 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *   field_ui_base_route = "entity.ai_search_block_log.settings",
  * )
  */
-final class AISearchBlockLog extends ContentEntityBase implements AISearchBlockLogInterface {
+final class AiSearchBlockLog extends ContentEntityBase implements AISearchBlockLogInterface {
 
   /**
    * {@inheritdoc}
@@ -222,10 +222,6 @@ final class AISearchBlockLog extends ContentEntityBase implements AISearchBlockL
       ->setSettings([
         'default_value' => '',
       ])
-      //      ->setDisplayOptions('form', [
-      //        'type' => 'string_textarea',
-      //        'weight' => 0,
-      //      ])
       ->setDisplayOptions('view', [
         'label' => 'inline',
         'type' => 'string',

@@ -1,6 +1,11 @@
 <?php
 
+/**
+ * @file
+ * The module codefile.
+ */
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
 
 /**
@@ -33,7 +38,7 @@ function template_preprocess_ai_search_block_log(array &$variables): void {
 /**
  * Implements hook_form_alter().
  */
-function ai_search_block_log_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+function ai_search_block_log_form_alter(&$form, FormStateInterface $form_state, $form_id) {
   if ('ai_search_block_form' == $form_id) {
     if (\Drupal::moduleHandler()->moduleExists('ai_search_block_log')) {
       $form['#attached']['library'][] = 'ai_search_block_log/ai_search_block_log_js';
@@ -41,16 +46,40 @@ function ai_search_block_log_form_alter(&$form, \Drupal\Core\Form\FormStateInter
   }
 }
 
+/**
+ * Function to commence logging (create first log row).
+ * @param string $block_id
+ * @param $user
+ * @param string $query
+ *
+ * @return mixed
+ */
 function ai_search_block_log_start($block_id, $user, $query) {
   $helper = \Drupal::service('ai_search_block_log.helper');
   return $helper->start($block_id, $user, $query);
 }
 
+/**
+ * Function to add a Response to a log.
+ *
+ * @param int $logId
+ * @param $response
+ *
+ * @return mixed
+ */
 function ai_search_block_log_add_response($logId, $response) {
   $helper = \Drupal::service('ai_search_block_log.helper');
   return $helper->logResponse($logId, $response);
 }
 
+/**
+ * Function to update the log with arbitrary fields.
+ *
+ * @param int $logId
+ * @param array $fields
+ *
+ * @return mixed
+ */
 function ai_search_block_log_update($logId, $fields) {
   $helper = \Drupal::service('ai_search_block_log.helper');
   return $helper->update($logId, $fields);

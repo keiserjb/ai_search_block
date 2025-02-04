@@ -21,6 +21,7 @@ class AiSearchBlockLogController extends ControllerBase {
    * Return []
    */
   public function score(Request $request) {
+    $logId = null;
     if ($request->get('log_id')) {
       $logId = $request->get('log_id');
       $score = $request->get('score');

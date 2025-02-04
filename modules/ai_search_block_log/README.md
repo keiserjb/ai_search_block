@@ -18,4 +18,4 @@ return log entry with stream
 - Make JS to trigger ajax calls
 
 ## FRONTEND Giving feedback
-- Trigger ajax call to /ai_seaarch_block/log/{id}/feedback
+- Trigger ajax call to /ai_search_block/log/{id}/feedback

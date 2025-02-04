@@ -10,7 +10,7 @@ use Drupal\Core\Form\FormStateInterface;
 /**
  * Form controller for the ai search block log entity edit forms.
  */
-final class AISearchBlockLogForm extends ContentEntityForm {
+final class AiSearchBlockLogForm extends ContentEntityForm {
 
   /**
    * {@inheritdoc}

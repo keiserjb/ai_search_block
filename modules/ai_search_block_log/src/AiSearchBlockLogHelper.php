@@ -2,20 +2,10 @@
 
 namespace Drupal\ai_search_block_log;
 
-use Drupal\ai\AiProviderPluginManager;
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Extension\ModuleHandlerInterface;
-use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
-use Drupal\Core\Render\RendererInterface;
-use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Drupal\Core\TempStore\PrivateTempStoreFactory;
-use League\HTMLToMarkdown\Converter\TableConverter;
-use League\HTMLToMarkdown\HtmlConverter;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\RequestStack;
 
 class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
 
@@ -34,9 +24,7 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
 
   private $user;
 
-  public function __construct(
-    protected EntityTypeManagerInterface $entityTypeManager,
-  ) {
+  public function __construct(protected EntityTypeManagerInterface $entityTypeManager) {
   }
 
   /**
@@ -48,7 +36,7 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
     );
   }
 
-  public function start($block_id, $user, $query){
+  public function start($block_id, $user, $query) {
     $storage = $this->entityTypeManager->getStorage('ai_search_block_log');
     /** @var \Drupal\ai_search_block_log\Entity\AISearchBlockLog $log */
     $log = $storage->create([
@@ -63,7 +51,9 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
   }
 
   public function logResponse(int $id, string $response) {
-    $entity = \Drupal::entityTypeManager()->getStorage('ai_search_block_log')->load($id);
+    $entity = \Drupal::entityTypeManager()
+      ->getStorage('ai_search_block_log')
+      ->load($id);
     if (!$entity) {
       return NULL;
     }
@@ -72,13 +62,16 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
   }
 
   public function update(int $id, array $fields) {
-    $entity = \Drupal::entityTypeManager()->getStorage('ai_search_block_log')->load($id);
+    $entity = \Drupal::entityTypeManager()
+      ->getStorage('ai_search_block_log')
+      ->load($id);
     if (!$entity) {
       return NULL;
     }
-    foreach($fields as $key => $field) {
+    foreach ($fields as $key => $field) {
       $entity->set($key, $field);
     }
     $entity->save();
   }
+
 }
