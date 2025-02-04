@@ -2,11 +2,7 @@
 
 namespace Drupal\ai_search_block_log\Controller;
 
-use Drupal\Component\Serialization\Json;
 use Drupal\Core\Controller\ControllerBase;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\ai_search_block\AiSearchBlockHelper;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -21,7 +17,7 @@ class AiSearchBlockLogController extends ControllerBase {
    * Return []
    */
   public function score(Request $request) {
-    $logId = null;
+    $logId = NULL;
     if ($request->get('log_id')) {
       $logId = $request->get('log_id');
       $score = $request->get('score');
@@ -29,7 +25,7 @@ class AiSearchBlockLogController extends ControllerBase {
     $helper = \Drupal::service('ai_search_block_log.helper');
     $helper->update((int) $logId, ['score' => (int) $score]);
 
-    // Todo make this configurable.
+    // @todo Make this configurable.
     return new JsonResponse(
       [
         'response' => $this->t('Thank you for your feedback.'),

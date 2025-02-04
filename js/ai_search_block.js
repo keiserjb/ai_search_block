@@ -63,7 +63,7 @@
                 chunks.forEach(function (chunk) {
                   try {
                     var parsed = JSON.parse(chunk);
-                    // Update logId from each chunk.
+                    // Update log Id from each chunk.
                     if (parsed.log_id) {
                       drupalSettings.ai_search_block.logId = parsed.log_id;
                     }
@@ -88,7 +88,7 @@
                       Drupal.attachBehaviors($suffixText[0]);
                       $suffixText.show();
                     }
-                    // (Optional) If needed, update logId from final response here.
+                    // (Optional) If needed, update log Id from final response here.
                   } else if (xhr.status === 500) {
                     $resultsBlock.html('An error happened.');
                     console.error('Error response:', xhr.responseText);
@@ -129,7 +129,7 @@
                   if (data && data.response) {
                     $resultsBlock.html(data.response);
                   }
-                  // Set logId if available.
+                  // Set log Id if available.
                   if (data && data.log_id) {
                     drupalSettings.ai_search_block.logId = data.log_id;
                   }

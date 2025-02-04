@@ -41,16 +41,22 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   private $configuration;
 
   /**
+   * The id of the log row.
+   * 
    * @var int
    */
   public $logId;
 
   /**
+   * The block id.
+   *
    * @var string
    */
   private $blockId;
 
   /**
+   * The user.
+   *
    * @var \Drupal\user\Entity\User
    */
   private $user;
@@ -107,8 +113,10 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * The block ID (for logging).
    *
    * @param string $block_id
+   *   The id of the block.
    *
    * @return void
+   *   Nothing returned.
    */
   public function setBlockId($block_id) {
     $this->blockId = $block_id;
@@ -287,10 +295,14 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * Log the response to the log.
    *
    * @param $response
+   *   The actual response.
    * @param string $prompt
+   *   The prompt used for the LLM.
    * @param array $items
+   *   The items used to generate a response.
    *
    * @return void
+   *   nothing returned.
    */
   private function logResponse($response, $prompt, $items) {
     if ($this->moduleHandler->moduleExists('ai_search_block_log')) {
@@ -456,11 +468,16 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * Streams back the response so it comes to the frontend nice and fluid.
    *
    * @param $parts
+   *   The parts of the response (stream).
    * @param string $type
+   *   The type (is it a string or a message).
    * @param string $prompt
+   *   The actual prompt to the LLM.
    * @param array $result_items
+   *   The items used to create the response.
    *
    * @return \Symfony\Component\HttpFoundation\StreamedResponse
+   *   The stream with the response.
    */
   private function streamBackResponse($parts, $type, $prompt, $result_items) {
     return new StreamedResponse(function () use ($type, $parts, $prompt, $result_items) {
