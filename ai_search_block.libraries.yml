@@ -7,3 +7,6 @@ ai_search_block:
     js/ai_search_block.js: {}
   dependencies:
     - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - core/once

@@ -1,94 +1,151 @@
-(function ($, Drupal, once) {
+(function ($, Drupal, drupalSettings, once) {
+  'use strict';
+
   Drupal.behaviors.aiSearchBlock = {
     attach: function (context, settings) {
-      let $suffix_text = $('#ai-search-block-response .suffix_text');
-      $suffix_text.hide();
-      let $output_region = $('#ai-search-block-response .ai-search-block-output');
+      // Attach the submit handler only once per form.
+      once('aiSearchForm', '.ai-search-block-form', context).forEach(function (formElem) {
+        var $form = $(formElem);
 
-      $('.ai-search-block-form').removeAttr('onsubmit').submit(function (e) {
-        e.preventDefault();
-        let $form = $(e.currentTarget);
-        $output_region.html('<p class="loading_text"><span class="loader"></span>' + drupalSettings.ai_search_block.loading_text + '</p>');
-        const $input = $form.find('[data-drupal-selector="edit-query"]');
-        const $inputText = $input.val();
-        const $stream = $form.find('[data-drupal-selector="edit-stream"]').val() === 'true';
-        const $block_id = $form.find('[data-drupal-selector="edit-block-id"]').val();
-        try {
-          if ($stream) {
-            let lastResponseLength = false;
-            xhr = new XMLHttpRequest();
-            xhr.open("POST", drupalSettings.ai_search_block.submit_url, true);
-            xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.setRequestHeader("Accept", "application/json");
-            xhr.send(JSON.stringify({
-              query: $inputText,
-              stream: $stream,
-              block_id: $block_id,
-            }));
-            xhr.onprogress = function (e) {
-              const newUpdates = xhr.responseText
-                .replace('false', 'true')
-                .trim()
-                .split('|§|')
-                .filter(Boolean);
-              const newUpdatesParsed = newUpdates.map((update) => {
-                const parsed = JSON.parse(update);
-                drupalSettings.ai_search_block.logId = parsed.log_id;
-                return parsed.answer_piece || '';
-              });
-              const joined = newUpdatesParsed.join('');
-              $output_region.html(joined);
+        // Locate the results output region and the suffix text.
+        var $resultsBlock = $('#ai-search-block-response .ai-search-block-output');
+        var $suffixText = $('#ai-search-block-response .suffix_text');
+
+        if (!$resultsBlock.length) {
+          console.warn('AI Search: Could not find a results block relative to the form.');
+          return;
+        }
+
+        // Hide suffix text initially.
+        if ($suffixText.length) {
+          $suffixText.hide();
+        }
+
+        // Determine loading message and create a reusable loader element.
+        var loadingMsg = drupalSettings.ai_search_block && drupalSettings.ai_search_block.loading_text
+            ? drupalSettings.ai_search_block.loading_text
+            : 'Loading...';
+        var $loader = $('<p class="loading_text"><span class="loader"></span>' + loadingMsg + '</p>');
+
+        $form.on('submit', function (event) {
+          event.preventDefault();
+
+          // Show the loader initially.
+          $resultsBlock.html($loader);
+
+          // Retrieve form values.
+          var queryVal = $form.find('[data-drupal-selector="edit-query"]').val() || '';
+          var streamVal = $form.find('[data-drupal-selector="edit-stream"]').val() === 'true';
+          var blockIdVal = $form.find('[data-drupal-selector="edit-block-id"]').val() || '';
+
+          // If streaming is enabled (using '1' as true).
+          if (streamVal) {
+            try {
+              var xhr = new XMLHttpRequest();
+              xhr.open('POST', drupalSettings.ai_search_block.submit_url, true);
+              xhr.setRequestHeader('Content-Type', 'application/json');
+              xhr.setRequestHeader('Accept', 'application/json');
+
+              // Cache variables to hold the full output.
+              var lastResponseLength = 0;
+              var joined = '';
+
+              xhr.onprogress = function () {
+                var responseText = xhr.responseText || '';
+                // Get only the new part of the response.
+                var newData = responseText.substring(lastResponseLength);
+                lastResponseLength = responseText.length;
+
+                // Split new data using the delimiter.
+                var chunks = newData.trim().split('|§|').filter(Boolean);
+
+                // Parse each chunk and accumulate the answer pieces.
+                chunks.forEach(function (chunk) {
+                  try {
+                    var parsed = JSON.parse(chunk);
+                    // Update logId from each chunk.
+                    if (parsed.log_id) {
+                      drupalSettings.ai_search_block.logId = parsed.log_id;
+                    }
+                    joined += parsed.answer_piece || '';
+                  } catch (e) {
+                    console.error('Error parsing chunk:', e, chunk);
+                  }
+                });
+
+                // Overwrite the full output (letting browsers fix broken HTML)
+                // and re-append the loader.
+                $resultsBlock.html(joined).append($loader);
+              };
+
+              xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                  if (xhr.status === 200) {
+                    // Remove the loader upon successful completion.
+                    $loader.remove();
+                    if ($suffixText.length) {
+                      $suffixText.html(drupalSettings.ai_search_block.suffix_text);
+                      Drupal.attachBehaviors($suffixText[0]);
+                      $suffixText.show();
+                    }
+                    // (Optional) If needed, update logId from final response here.
+                  } else if (xhr.status === 500) {
+                    $resultsBlock.html('An error happened.');
+                    console.error('Error response:', xhr.responseText);
+                    try {
+                      var parsedError = JSON.parse(xhr.responseText);
+                      if (parsedError.response && parsedError.response.answer_piece) {
+                        $resultsBlock.html(parsedError.response.answer_piece);
+                      }
+                      Drupal.attachBehaviors($resultsBlock[0]);
+                    } catch (e) {
+                      console.error('Error parsing 500 response:', e);
+                    }
+                  }
+                }
+              };
+
+              // Send the streaming request.
+              xhr.send(
+                  JSON.stringify({
+                    query: queryVal,
+                    stream: streamVal,
+                    block_id: blockIdVal
+                  })
+              );
+            } catch (e) {
+              console.error('XHR error:', e);
             }
-            xhr.onreadystatechange = function () {
-              if (xhr.readyState == 4 && this.status == 200) {
-                $suffix_text.html(drupalSettings.ai_search_block.suffix_text);
-                Drupal.attachBehaviors($suffix_text[0]);
-                $suffix_text.show();
-                drupalSettings.ai_search_block.logId = data.log_id;
-              }
-              if (xhr.readyState == 4 && this.status == 500) {
-                $output_region.html('An error happened.');
-                console.log(xhr.responseText);
-                const parsed = JSON.parse(xhr.responseText);
-                $output_region.html(parsed.response.answer_piece);
-                Drupal.attachBehaviors($output_region[0]);
-              }
-            }
-            xhr.send();
           } else {
-            var jqxhr = $.post(drupalSettings.ai_search_block.submit_url,
-              {
-                query: $inputText,
-                stream: $stream,
-                block_id: $block_id,
-              }
-              , function (data) {
-                $output_region.html(data.response);
-                drupalSettings.ai_search_block.logId = data.log_id;
-                $suffix_text.html(drupalSettings.ai_search_block.suffix_text);
-                Drupal.attachBehaviors($suffix_text[0]);
-                $suffix_text.show();
-              })
-              .done(function () {
-                //alert( "second success" );
-              })
-              .fail(function () {
-                //alert( "error" );
-              })
-              .always(function () {
-                //alert( "finished" );
-              });
-            jqxhr.always(function () {
-              //alert( "second finished" );
+            // Non-streaming: use jQuery.post.
+            $.post(
+                drupalSettings.ai_search_block.submit_url,
+                {
+                  query: queryVal,
+                  stream: streamVal,
+                  block_id: blockIdVal
+                },
+                function (data) {
+                  if (data && data.response) {
+                    $resultsBlock.html(data.response);
+                  }
+                  // Set logId if available.
+                  if (data && data.log_id) {
+                    drupalSettings.ai_search_block.logId = data.log_id;
+                  }
+                  if ($suffixText.length) {
+                    $suffixText.html(drupalSettings.ai_search_block.suffix_text).show();
+                    Drupal.attachBehaviors($suffixText[0]);
+                  }
+                }
+            ).fail(function () {
+              $resultsBlock.html('An error happened.');
             });
           }
 
-        } catch (e) {
-
-        }
-        e.stopImmediatePropagation();
-        return false;
+          return false;
+        });
       });
     }
   };
-})(jQuery, Drupal, once);
+})(jQuery, Drupal, drupalSettings, once);
