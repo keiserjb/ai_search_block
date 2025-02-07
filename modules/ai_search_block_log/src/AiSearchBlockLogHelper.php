@@ -72,6 +72,7 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
    * @param $query
    *
    * @return int|mixed|string|null
+   *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    * @throws \Drupal\Core\Entity\EntityStorageException
@@ -97,6 +98,18 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
     return $log->id();
   }
 
+  /**
+   * Log the response to the DB.
+   *
+   * @param \Drupal\ai_search_block_log\int $id
+   * @param \Drupal\ai_search_block_log\string $response
+   *
+   * @return void|null
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
   public function logResponse(int $id, string $response) {
     $entity = \Drupal::entityTypeManager()
       ->getStorage('ai_search_block_log')
@@ -108,6 +121,18 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
     $entity->save();
   }
 
+  /**
+   * Update the log with fields.
+   *
+   * @param \Drupal\ai_search_block_log\int $id
+   * @param array $fields
+   *
+   * @return void|null
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   * @throws \Drupal\Core\Entity\EntityStorageException
+   */
   public function update(int $id, array $fields) {
     $entity = \Drupal::entityTypeManager()
       ->getStorage('ai_search_block_log')

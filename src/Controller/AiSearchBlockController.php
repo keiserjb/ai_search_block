@@ -6,6 +6,7 @@ use Drupal\Component\Serialization\Json;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\ai_search_block\AiSearchBlockHelper;
+use Drupal\Core\Session\AccountProxyInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -43,11 +44,14 @@ class AiSearchBlockController extends ControllerBase {
    *   The form builder.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_manager
    *   The entity type manager.
+   * @param \Drupal\Core\Session\AccountProxyInterface $current_user
+   *   The current user.
    */
-  public function __construct(AiSearchBlockHelper $searchBlockHelper, EntityTypeManagerInterface $entity_manager) {
+  public function __construct(AiSearchBlockHelper $searchBlockHelper, EntityTypeManagerInterface $entity_manager, AccountProxyInterface $current_user) {
     $this->searchBlockHelper = $searchBlockHelper;
     $this->entityTypeManager = $entity_manager;
     $this->blockEntity = $this->entityTypeManager->getStorage('block');
+    $this->currentUser = $current_user;
   }
 
   /**
@@ -62,7 +66,7 @@ class AiSearchBlockController extends ControllerBase {
     return new static(
       $container->get('ai_search_block.helper'),
       $container->get('entity_type.manager'),
-
+      $container->get('current_user')
     );
   }
 
@@ -86,8 +90,8 @@ class AiSearchBlockController extends ControllerBase {
     $block = $this->blockEntity->load($block_id);
     $logId = 0;
     if (function_exists('ai_search_block_log_start')) {
-      $logId = ai_search_block_log_start($block_id, \Drupal::currentUser()
-        ->id(), $query);
+      $logId = ai_search_block_log_start($block_id, $this->currentUser->id(),
+        $query);
     }
     if ($block) {
       $settings = $block->get('settings');

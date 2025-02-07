@@ -1,9 +1,9 @@
 (function ($, Drupal) {
-  Drupal.behaviors.aiSearchBlockLog= {
+  Drupal.behaviors.aiSearchBlockLog = {
     attach: function (context, settings) {
       let $suffix_text = $('#ai-search-block-response .suffix_text');
-      $('.ai_search_block_log_score').each(function(index) {
-        $(this).on("click", function(){
+      $('.ai_search_block_log_score').each(function (index) {
+        $(this).on("click", function () {
           var $score = $(this).data('aiSearchBlockLogScore');
           var $logId = drupalSettings.ai_search_block.logId;
           var jqxhr = $.post('/ai-search-block-log/score',

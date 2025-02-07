@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ai_search_block;
 
+use Drupal\Component\Plugin\PluginManagerInterface;
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -15,7 +16,6 @@ use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\TempStore\PrivateTempStoreFactory;
-use Drupal\ai\AiProviderPluginManager;
 use Drupal\ai\OperationType\Chat\ChatInput;
 use Drupal\ai\OperationType\Chat\ChatMessage;
 use Drupal\ai\OperationType\Chat\StreamedChatMessageIteratorInterface;
@@ -41,8 +41,15 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   private $configuration;
 
   /**
+   * The converter.
+   *
+   * @var \League\HTMLToMarkdown\HtmlConverter
+   */
+  private HtmlConverter $converter;
+
+  /**
    * The id of the log row.
-   * 
+   *
    * @var int
    */
   public $logId;
@@ -65,14 +72,14 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     protected PrivateTempStoreFactory $tmpStore,
     protected EntityTypeManagerInterface $entityTypeManager,
     protected RendererInterface $renderer,
-    protected HtmlConverter $converter,
-    protected AiProviderPluginManager $aiProviderManager,
+    protected PluginManagerInterface $aiProviderManager,
     protected RequestStack $requestStack,
     protected LanguageManagerInterface $languageManager,
     protected AccountProxyInterface $currentUser,
     protected ConfigFactoryInterface $configFactory,
     protected ModuleHandlerInterface $moduleHandler,
   ) {
+    $this->converter = new HtmlConverter();
     $this->converter->getConfig()->setOption('strip_tags', TRUE);
     $this->converter->getConfig()->setOption('strip_placeholder_links', TRUE);
     $this->converter->getEnvironment()->addConverter(new TableConverter());
@@ -86,7 +93,6 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $container->get('tempstore.private'),
       $container->get('entity_type.manager'),
       $container->get('renderer'),
-      new HtmlConverter(),
       $container->get('ai.provider'),
       $container->get('request_stack'),
       $container->get('language_manager'),
@@ -294,7 +300,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   /**
    * Log the response to the log.
    *
-   * @param $response
+   * @param string $response
    *   The actual response.
    * @param string $prompt
    *   The prompt used for the LLM.
@@ -320,7 +326,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * @param string $html
    *   The HTML.
    * @param \Drupal\Core\Entity\EntityType $entity
-   *   The entity (context))
+   *   The entity (context)
    *
    * @return mixed
    *   The cleaned up html.
@@ -467,7 +473,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   /**
    * Streams back the response so it comes to the frontend nice and fluid.
    *
-   * @param $parts
+   * @param array $parts
    *   The parts of the response (stream).
    * @param string $type
    *   The type (is it a string or a message).
