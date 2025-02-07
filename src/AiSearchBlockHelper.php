@@ -227,7 +227,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
     ], $this->configuration['aggregated_llm']);
 
     foreach ($this->getPrePromptDrupalContext() as $key => $replace) {
-      $message = str_replace('[' . $key . ']', is_null($replace) ? '' : $replace, $message);
+      $message = str_replace('[' . $key . ']', is_null($replace) ? '' : (string) $replace, $message);
     }
 
     $tomorrow = strtotime('+ 1 day');
