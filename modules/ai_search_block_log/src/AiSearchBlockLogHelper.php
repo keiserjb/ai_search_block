@@ -9,6 +9,9 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
+/**
+ * The helper class.
+ */
 class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
 
   use StringTranslationTrait;
@@ -29,11 +32,19 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
    */
   private $configuration;
 
+  /**
+   * The log id.
+   *
+   * @var integer
+   */
   private $logId;
 
+  /**
+   * The block id.
+   *
+   * @var string
+   */
   private $blockId;
-
-  private $user;
 
   public function __construct(protected EntityTypeManagerInterface $entityTypeManager, ConfigFactoryInterface $configFactory, Connection $connection) {
     $this->configFactory = $configFactory;
@@ -52,24 +63,24 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
   }
 
   /**
-   * @param $block_id
-   * @param $user
-   * @param $query
+   * Delete the expired logs.
    *
    * @return void
+   *   Returns nothing.
    */
   public function cron() {
     $now = time();
-    // delete from table where expired < now.
     $query = 'DELETE from {ai_search_block_log} where ai_search_block_log.expiry < :param';
-    // delete the record associated with this id
     $this->database->query($query, [':param' => (int) $now]);
   }
 
   /**
    * @param $block_id
+   *   The block.
    * @param $user
+   *   THe user.
    * @param $query
+   *   The question.
    *
    * @return int|mixed|string|null
    *   Returns the log item id.
@@ -134,7 +145,7 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
    *   The fields to update.
    *
    * @return void|null
-   *  Returns nothing.
+   *   Returns nothing.
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
