@@ -115,7 +115,7 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function logResponse(int $id, string $response) {
-    $entity = \Drupal::entityTypeManager()
+    $entity = $this->entityTypeManager
       ->getStorage('ai_search_block_log')
       ->load($id);
     if (!$entity) {
@@ -141,7 +141,7 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
    * @throws \Drupal\Core\Entity\EntityStorageException
    */
   public function update(int $id, array $fields) {
-    $entity = \Drupal::entityTypeManager()
+    $entity = $this->entityTypeManager
       ->getStorage('ai_search_block_log')
       ->load($id);
     if (!$entity) {
