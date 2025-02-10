@@ -78,7 +78,7 @@ function ai_search_block_log_start($block_id, $user, $query) {
  * Function to add a Response to a log.
  *
  * @param int $logId
- *   The logid to update.
+ *   The log id to update.
  * @param $response
  *   The response to update.
  *
