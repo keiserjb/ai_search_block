@@ -28,6 +28,20 @@ final class AISearchBlockLogSettingsForm extends FormBase {
       '#markup' => $this->t('Settings form for an ai search block log entity type.'),
     ];
 
+    $expiry = $this->configFactory()->get('ai_search_block_log.settings')->get('expiry');
+    $form['expiration'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Expiration'),
+      '#default_value' => (isset($expiry)?$expiry:'week'),
+      '#description' => $this->t('This is the amount of time the system will keep the logs'),
+      '#options' => [
+        'day' => $this->t('1 day'),
+        'week' => $this->t('1 week'),
+        'month' => $this->t('1 month'),
+        'year' => $this->t('1 year'),
+      ],
+    ];
+
     $form['actions'] = [
       '#type' => 'actions',
       'submit' => [
@@ -43,7 +57,8 @@ final class AISearchBlockLogSettingsForm extends FormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
-    $this->messenger()->addStatus($this->t('The configuration has been updated.'));
+    $values = $form_state->getValues();
+    $this->configFactory()->getEditable('ai_search_block_log.settings')->set('expiry', $values['expiration'])->save();
+    $this->messenger()->addStatus($this->t('The configuration has been updated. The expiration of existing items will not be updated.'));
   }
-
 }

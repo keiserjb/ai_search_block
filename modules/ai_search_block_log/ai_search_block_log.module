@@ -18,6 +18,16 @@ function ai_search_block_log_theme(): array {
 }
 
 /**
+ * Implements hook_cron().
+ *
+ * Add methods here to be executed via cron.
+ */
+function ai_search_block_log_cron() {
+  $helper = \Drupal::service('ai_search_block_log.helper');
+  return $helper->cron();
+}
+
+/**
  * Prepares variables for ai search block log templates.
  *
  * Default template: ai-search-block-log.html.twig.
@@ -48,16 +58,11 @@ function ai_search_block_log_form_alter(&$form, FormStateInterface $form_state, 
 
 /**
  * Function to commence logging (create first log row).
- *
  * @param string $block_id
- *   The block id (we can have multiple).
  * @param $user
- *   The user.
  * @param string $query
- *   The users question.
  *
  * @return mixed
- *   The id of the created log row
  */
 function ai_search_block_log_start($block_id, $user, $query) {
   $helper = \Drupal::service('ai_search_block_log.helper');
@@ -68,12 +73,9 @@ function ai_search_block_log_start($block_id, $user, $query) {
  * Function to add a Response to a log.
  *
  * @param int $logId
- *   The id of the actual log row.
  * @param $response
- *   The response to loc to the DB.
  *
  * @return mixed
- *   Returns the Log Id.
  */
 function ai_search_block_log_add_response($logId, $response) {
   $helper = \Drupal::service('ai_search_block_log.helper');
@@ -84,12 +86,9 @@ function ai_search_block_log_add_response($logId, $response) {
  * Function to update the log with arbitrary fields.
  *
  * @param int $logId
- *   The id of the log row to update.
  * @param array $fields
- *   The fields to update.
  *
  * @return mixed
- *   returns the result of the update.
  */
 function ai_search_block_log_update($logId, $fields) {
   $helper = \Drupal::service('ai_search_block_log.helper');
