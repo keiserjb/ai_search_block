@@ -32,7 +32,7 @@ final class AISearchBlockLogSettingsForm extends FormBase {
     $form['expiration'] = [
       '#type' => 'select',
       '#title' => $this->t('Expiration'),
-      '#default_value' =>  $expiry ?? 'week',
+      '#default_value' => $expiry ?? 'week',
       '#description' => $this->t('This is the amount of time the system will keep the logs'),
       '#options' => [
         'day' => $this->t('1 day'),

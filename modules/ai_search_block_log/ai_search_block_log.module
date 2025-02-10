@@ -61,17 +61,17 @@ function ai_search_block_log_form_alter(&$form, FormStateInterface $form_state, 
  *
  * @param string $block_id
  *   The id of the block.
- * @param $user
- *   The user.
+ * @param integer $uid
+ *   The user id.
  * @param string $query
  *   The question.
  *
  * @return mixed
  *   Returns the log Id.
  */
-function ai_search_block_log_start($block_id, $user, $query) {
+function ai_search_block_log_start($block_id, $uid, $query) {
   $helper = \Drupal::service('ai_search_block_log.helper');
-  return $helper->start($block_id, $user, $query);
+  return $helper->start($block_id, $uid, $query);
 }
 
 /**
@@ -79,7 +79,7 @@ function ai_search_block_log_start($block_id, $user, $query) {
  *
  * @param int $logId
  *   The log id to update.
- * @param $response
+ * @param string $response
  *   The response to update.
  *
  * @return mixed

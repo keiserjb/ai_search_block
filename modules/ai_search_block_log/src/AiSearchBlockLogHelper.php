@@ -75,11 +75,13 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
   }
 
   /**
-   * @param $block_id
+   * Open the log line.
+   *
+   * @param string $block_id
    *   The block.
-   * @param $user
-   *   THe user.
-   * @param $query
+   * @param integer $uid
+   *   THe user id.
+   * @param string $query
    *   The question.
    *
    * @return int|mixed|string|null
