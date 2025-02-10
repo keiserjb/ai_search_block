@@ -61,7 +61,7 @@ function ai_search_block_log_form_alter(&$form, FormStateInterface $form_state, 
  *
  * @param string $block_id
  *   The id of the block.
- * @param integer $uid
+ * @param int $uid
  *   The user id.
  * @param string $query
  *   The question.

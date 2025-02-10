@@ -23,6 +23,11 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
    */
   protected $configFactory;
 
+  /**
+   * The database connection.
+   *
+   * @var \Drupal\Core\Database\Connection
+   */
   protected $database;
 
   /**
@@ -35,7 +40,7 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
   /**
    * The log id.
    *
-   * @var integer
+   * @var int
    */
   private $logId;
 
@@ -79,7 +84,7 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
    *
    * @param string $block_id
    *   The block.
-   * @param integer $uid
+   * @param int $uid
    *   THe user id.
    * @param string $query
    *   The question.
