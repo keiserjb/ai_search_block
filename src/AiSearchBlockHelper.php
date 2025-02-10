@@ -238,9 +238,9 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
 
     $tomorrow = strtotime('+ 1 day');
     $yesterday = strtotime('- 1 day');
-    $date_today = date("D M j G:i:s T Y");
-    $date_tomorrow = date("D M j G:i:s T Y", $tomorrow);
-    $date_yesterday = date("D M j G:i:s T Y", $yesterday);
+    $date_today = date("l M j G:i:s T Y");
+    $date_tomorrow = date("l M j G:i:s T Y", $tomorrow);
+    $date_yesterday = date("l M j G:i:s T Y", $yesterday);
     $time_now = date("H:i:s");
 
     $message = str_replace('[time_now]', $time_now, $message);
