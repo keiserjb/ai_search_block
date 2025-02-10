@@ -58,11 +58,16 @@ function ai_search_block_log_form_alter(&$form, FormStateInterface $form_state, 
 
 /**
  * Function to commence logging (create first log row).
+ *
  * @param string $block_id
+ *   The id of the block.
  * @param $user
+ *   The user.
  * @param string $query
+ *   The question.
  *
  * @return mixed
+ *   Returns the log Id.
  */
 function ai_search_block_log_start($block_id, $user, $query) {
   $helper = \Drupal::service('ai_search_block_log.helper');
@@ -73,9 +78,12 @@ function ai_search_block_log_start($block_id, $user, $query) {
  * Function to add a Response to a log.
  *
  * @param int $logId
+ *   The logid to update.
  * @param $response
+ *   The response to update.
  *
  * @return mixed
+ *   Returns the return.
  */
 function ai_search_block_log_add_response($logId, $response) {
   $helper = \Drupal::service('ai_search_block_log.helper');
@@ -86,9 +94,12 @@ function ai_search_block_log_add_response($logId, $response) {
  * Function to update the log with arbitrary fields.
  *
  * @param int $logId
+ *   The log id.
  * @param array $fields
+ *   The fields to update.
  *
  * @return mixed
+ *   Returns the return.
  */
 function ai_search_block_log_update($logId, $fields) {
   $helper = \Drupal::service('ai_search_block_log.helper');

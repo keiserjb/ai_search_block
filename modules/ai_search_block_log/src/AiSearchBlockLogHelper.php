@@ -72,6 +72,7 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
    * @param $query
    *
    * @return int|mixed|string|null
+   *   Returns the log item id.
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
@@ -81,7 +82,7 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
     $storage = $this->entityTypeManager->getStorage('ai_search_block_log');
     $expiry = $this->configFactory->get('ai_search_block_log.settings')
       ->get('expiry');
-    $expiry = (isset($expiry) ? $expiry : 'week');
+    $expiry = $expiry ?? 'week';
 
     /** @var \Drupal\ai_search_block_log\Entity\AISearchBlockLog $log */
     $log = $storage->create([
@@ -102,9 +103,12 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
    * Log the response to the DB.
    *
    * @param \Drupal\ai_search_block_log\int $id
+   *   The id to log it in.
    * @param \Drupal\ai_search_block_log\string $response
+   *   The response to log.
    *
    * @return void|null
+   *   Returns nothing.
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
@@ -125,9 +129,12 @@ class AiSearchBlockLogHelper implements ContainerFactoryPluginInterface {
    * Update the log with fields.
    *
    * @param \Drupal\ai_search_block_log\int $id
+   *   The id of the log item to update.
    * @param array $fields
+   *   The fields to update.
    *
    * @return void|null
+   *  Returns nothing.
    *
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
