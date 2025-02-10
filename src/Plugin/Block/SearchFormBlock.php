@@ -211,7 +211,6 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
 
     $llm_model_options = $this->aiProviderManager->getSimpleProviderModelOptions('chat');
     array_shift($llm_model_options);
-    array_splice($llm_model_options, 0, 1);
     $form['rag']['llm_model'] = [
       '#type' => 'select',
       "#empty_option" => $this->t('-- Default from AI module (chat) --'),
