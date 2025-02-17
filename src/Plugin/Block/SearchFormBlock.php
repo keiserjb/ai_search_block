@@ -282,6 +282,7 @@ Example response 2:
       '#type' => 'textarea',
       '#title' => $this->t('RAG LLM Agent'),
       '#description' => $this->t('With Aggregated and Rendered entities, this agent will take each of the entities returned and create one summarized answer to feed to the assistant. This can take the tokens [question] and [entity] or even specific tokens from the entity below. If multiple results are found the [entity] will be replaced with the contents of multiple results separated by --------- and new lines.<br><br><strong>The following placeholders can be used:</strong><br>
+      <em>[entity]</em> - The rendered entities (context).<br>
       <em>[is_logged_in]</em> - A message if the person is logged in or not.<br>
       <em>[user_name]</em> - The username of the user.<br>
       <em>[user_roles]</em> - The roles of the user.<br>

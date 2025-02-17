@@ -26,8 +26,9 @@ use Drupal\Core\Field\BaseFieldDefinition;
  *     "list_builder" = "Drupal\ai_search_block_log\AISearchBlockLogListBuilder",
  *     "views_data" = "Drupal\views\EntityViewsData",
  *     "form" = {
- *       "add" = "Drupal\ai_search_block_log\Form\AISearchBlockLogForm",
- *       "edit" = "Drupal\ai_search_block_log\Form\AISearchBlockLogForm",
+ *       "default" = "Drupal\ai_search_block_log\Form\AiSearchBlockLogForm",
+ *       "add" = "Drupal\ai_search_block_log\Form\AiSearchBlockLogForm",
+ *       "edit" = "Drupal\ai_search_block_log\Form\AiSearchBlockLogForm",
  *       "delete" = "Drupal\Core\Entity\ContentEntityDeleteForm",
  *       "delete-multiple-confirm" = "Drupal\Core\Entity\Form\DeleteMultipleForm",
  *     },
@@ -221,6 +222,10 @@ final class AiSearchBlockLog extends ContentEntityBase implements AISearchBlockL
       ->setDescription(t('The user score.'))
       ->setSettings([
         'default_value' => '',
+      ])
+      ->setDisplayOptions('form', [
+        'type' => 'string_textarea',
+        'weight' => 0,
       ])
       ->setDisplayOptions('view', [
         'label' => 'inline',

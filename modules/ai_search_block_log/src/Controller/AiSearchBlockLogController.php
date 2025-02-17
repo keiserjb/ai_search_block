@@ -55,15 +55,17 @@ class AiSearchBlockLogController extends ControllerBase {
     if ($request->get('log_id')) {
       $logId = $request->get('log_id');
       $score = $request->get('score');
+      // Use the injected helper service.
+      $this->helper->update((int) $logId, ['score' => (int) $score]);
+      if ($feedback = $request->get('feedback')) {
+        $this->helper->update((int) $logId, ['feedback' => $feedback]);
+      }
+
+      // @todo Make this configurable.
+      return new JsonResponse([
+        'response' => $this->t('Thank you for your feedback.'),
+      ]);
     }
-
-    // Use the injected helper service.
-    $this->helper->update((int) $logId, ['score' => (int) $score]);
-
-    // @todo Make this configurable.
-    return new JsonResponse([
-      'response' => $this->t('Thank you for your feedback.'),
-    ]);
+    die('Whoops');
   }
-
 }
