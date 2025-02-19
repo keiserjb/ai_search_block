@@ -99,6 +99,9 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'aggregated_llm' => NULL,
       'access_check' => 'post',
       'context_threshold' => 0.1,
+      'block_enabled' => FALSE,
+      'block_words' => 'prompt',
+      'block_response' => 'This question contained blocked words.',
     ];
   }
 
@@ -139,6 +142,31 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       '#title' => $this->t('Stream'),
       '#description' => $this->t('Stream the messages in real-time.'),
       '#default_value' => $this->configuration['stream'],
+    ];
+
+    $form['block'] = [
+      '#type' => 'fieldset',
+      '#title' => $this->t('Form config'),
+    ];
+    $form['block']['block_enabled'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Check the question'),
+      '#description' => $this->t('Check if the question contains illegal words and block it if that is the case.'),
+      '#default_value' => $this->configuration['block_enabled'],
+    ];
+
+    $form['block']['block_words'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Blocked words'),
+      '#description' => $this->t('Blocked words'),
+      '#default_value' => $this->configuration['block_words'],
+    ];
+
+    $form['block']['block_response'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Question blocked message'),
+      '#description' => $this->t('This message will be shown to the user if they ask a question containing illegal words.'),
+      '#default_value' => $this->configuration['block_response'],
     ];
 
     $form['source_data'] = [
@@ -370,6 +398,9 @@ Example response 2:
     $this->configuration['access_check'] = $form_state->getValue('rag')['access_check'];
     $this->configuration['context_threshold'] = $form_state->getValue('rag')['context_threshold'];
     $this->configuration['llm_model'] = $form_state->getValue('rag')['llm_model'];
+    $this->configuration['block_enabled'] = $form_state->getValue('block')['block_enabled'];
+    $this->configuration['block_words'] = $form_state->getValue('block')['block_words'];
+    $this->configuration['block_response'] = $form_state->getValue('block')['block_response'];
 
     // llm_model.
     if (method_exists($form_state->getBuildInfo()['callback_object'], 'getEntity')) {

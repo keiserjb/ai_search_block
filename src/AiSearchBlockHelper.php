@@ -129,6 +129,29 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   }
 
   /**
+   * Test if valid input.
+   *
+   * @param string $query
+   *   The question.
+   *
+   * @return bool
+   *   If the question is valid or not.
+   */
+  private function validInput($query) {
+    if ($this->configuration['block_enabled']) {
+      $lines = explode(PHP_EOL, $this->configuration['block_words']);
+      foreach ($lines as $line) {
+        $line = trim($line);
+        if (str_contains($query, $line)) {
+          // Not valid this FALSE.
+          return FALSE;
+        }
+      }
+    }
+    return TRUE;
+  }
+
+  /**
    * Take rag action.
    *
    * @param string $query
@@ -140,6 +163,10 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    * @throws \Exception
    */
   public function searchRagAction($query) {
+    if (!$this->validInput($query)) {
+      return $this->giveMeAnError($this->configuration['block_response']);
+    }
+
     if (!empty($this->configuration['database'])) {
       $rag_database = $this->configuration;
     }

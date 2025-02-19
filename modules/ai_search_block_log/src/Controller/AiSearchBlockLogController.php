@@ -68,4 +68,5 @@ class AiSearchBlockLogController extends ControllerBase {
     }
     die('Whoops');
   }
+
 }
