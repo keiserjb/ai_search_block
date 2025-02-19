@@ -129,6 +129,11 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   }
 
   /**
+<<<<<<< HEAD
+=======
+<<<<<<< Updated upstream
+=======
+>>>>>>> 454ebd8 (allow temp config)
    * Test if valid input.
    *
    * @param string $query
@@ -138,7 +143,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    *   If the question is valid or not.
    */
   private function validInput($query) {
-    if ($this->configuration['block_enabled']) {
+    if ($this->configuration['block_enabled'] === 1) {
       $lines = explode(PHP_EOL, $this->configuration['block_words']);
       foreach ($lines as $line) {
         $line = trim($line);
@@ -288,6 +293,8 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $ai_model_to_use = $parts[1];
     }
     $provider = $this->aiProviderManager->loadProviderFromSimpleOption($ai_provider_model);
+    $temp = $this->configuration['llm_temp'] ?? 0.5;
+    $provider->setConfiguration(['temperature' => (float) $temp]);
     $config = [];
     foreach ($this->configuration as $key => $val) {
       $config[$key] = $val;

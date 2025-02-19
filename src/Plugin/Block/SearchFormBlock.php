@@ -95,6 +95,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'no_results_message' => 'Sorry we have not found the content you were looking for. Please reformulate your question?',
       'max_results' => 20,
       'rendered_view_mode' => 'full',
+      'llm_temp' => 0.5,
       'llm_model' => NULL,
       'aggregated_llm' => NULL,
       'access_check' => 'post',
@@ -332,6 +333,16 @@ Example response 2:
       ],
     ];
 
+    $form['rag']['llm_temp'] = [
+      '#type' => 'number',
+      '#title' => $this->t('LLM Temperature'),
+      '#description' => $this->t('The temperature that is passed on the the LLM.'),
+      '#default_value' => $this->configuration['llm_temp'],
+      '#min' => 0,
+      '#max' => 2,
+      '#step' => 0.1,
+    ];
+
     $access_options = [];
     $access_options['false'] = $this->t('No access check');
     $access_options['meta'] = $this->t('[NOT WORKING YET] filter permission in metadata');
@@ -398,6 +409,7 @@ Example response 2:
     $this->configuration['access_check'] = $form_state->getValue('rag')['access_check'];
     $this->configuration['context_threshold'] = $form_state->getValue('rag')['context_threshold'];
     $this->configuration['llm_model'] = $form_state->getValue('rag')['llm_model'];
+    $this->configuration['llm_temp'] = $form_state->getValue('rag')['llm_temp'];
     $this->configuration['block_enabled'] = $form_state->getValue('block')['block_enabled'];
     $this->configuration['block_words'] = $form_state->getValue('block')['block_words'];
     $this->configuration['block_response'] = $form_state->getValue('block')['block_response'];
