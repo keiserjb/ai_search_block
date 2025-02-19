@@ -129,11 +129,6 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   }
 
   /**
-<<<<<<< HEAD
-=======
-<<<<<<< Updated upstream
-=======
->>>>>>> 454ebd8 (allow temp config)
    * Test if valid input.
    *
    * @param string $query
