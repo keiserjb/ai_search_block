@@ -12,6 +12,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Controller\TitleResolverInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\ai_search_block\AiSearchBlockHelper;
+use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\file\Entity\File;
@@ -49,6 +50,15 @@ class AiTalkWIthNodeController extends ControllerBase {
   protected $blockEntity;
 
   /**
+   * Module handler.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected $moduleHandler;
+
+  private $logId;
+
+  /**
    * Constructor.
    *
    * @param \Drupal\ai_search_block\AiSearchBlockHelper $searchBlockHelper
@@ -58,7 +68,7 @@ class AiTalkWIthNodeController extends ControllerBase {
    * @param \Drupal\Core\Session\AccountProxyInterface $current_user
    *   The current user.
    */
-  public function __construct(EntityTypeManagerInterface $entity_manager, AccountProxyInterface $current_user, RequestStack $request_stack, TitleResolverInterface $title_resolver, LanguageManagerInterface $languageManager, ConfigFactoryInterface $configFactory, PluginManagerInterface $aiProviderManager) {
+  public function __construct(EntityTypeManagerInterface $entity_manager, AccountProxyInterface $current_user, RequestStack $request_stack, TitleResolverInterface $title_resolver, LanguageManagerInterface $languageManager, ConfigFactoryInterface $configFactory, PluginManagerInterface $aiProviderManager, ModuleHandlerInterface $moduleHandler) {
     $this->entityTypeManager = $entity_manager;
     $this->blockEntity = $this->entityTypeManager->getStorage('block');
     $this->currentUser = $current_user;
@@ -67,6 +77,7 @@ class AiTalkWIthNodeController extends ControllerBase {
     $this->languageManager = $languageManager;
     $this->configFactory = $configFactory;
     $this->aiProviderManager = $aiProviderManager;
+    $this->moduleHandler = $moduleHandler;
   }
 
   /**
@@ -86,6 +97,7 @@ class AiTalkWIthNodeController extends ControllerBase {
       $container->get('language_manager'),
       $container->get('config.factory'),
       $container->get('ai.provider'),
+      $container->get('module_handler'),
     );
   }
 
@@ -109,16 +121,15 @@ class AiTalkWIthNodeController extends ControllerBase {
       $node_id = $data['node_id'];
     }
     $block = $this->blockEntity->load($block_id);
-    $logId = 0;
-    if (function_exists('ai_search_block_log_start')) {
-      $logId = ai_search_block_log_start($block_id, $this->currentUser->id(),
+    $this->logId = 0;
+    if ($this->moduleHandler->moduleExists('ai_search_block_log')) {
+      $this->logId = ai_search_block_log_start($block_id, $this->currentUser->id(),
         $query);
     }
     if ($block) {
       $settings = $block->get('settings');
       $this->setConfig($settings);
       $this->setBlockId($block_id);
-//      $this->searchBlockHelper->logId = $logId;
       $context = $this->loadContextFromFile();
       $context .= $this->loadContextFromField($node_id);
       $results = $this->doChatAction($query, $context);
@@ -135,12 +146,12 @@ class AiTalkWIthNodeController extends ControllerBase {
     }
     else {
       if (function_exists('ai_search_block_log_add_response')) {
-        ai_search_block_log_add_response($logId, 'There was an error fetching your data');
+        ai_search_block_log_add_response($this->logId, 'There was an error fetching your data');
       }
       return new JsonResponse(
         [
           'response' => 'There was an error fetching your data',
-          'log_id' => $logId,
+          'log_id' => $this->logId,
         ]);
     }
   }
@@ -316,6 +327,17 @@ class AiTalkWIthNodeController extends ControllerBase {
       'Content-Type' => 'text/event-stream',
       'X-Accel-Buffering' => 'no',
     ]);
+  }
+
+
+  private function logResponse($response, $prompt, $items) {
+    if ($this->moduleHandler->moduleExists('ai_search_block_log')) {
+      ai_search_block_log_update($this->logId, [
+        'prompt_used' => $prompt,
+        'response_given' => $response,
+        'detailed_output' => Json::encode($items),
+      ]);
+    }
   }
 
 }

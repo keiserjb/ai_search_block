@@ -5,6 +5,7 @@ namespace Drupal\ai_talk_with_node\Plugin\Block;
 use Drupal\ai\OperationType\Chat\ChatInput;
 use Drupal\ai\OperationType\Chat\ChatMessage;
 use Drupal\ai_talk_with_node\Form\TalkWithNodeForm;
+use Drupal\Component\Serialization\Json;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\FormState;
@@ -32,12 +33,6 @@ class AiTalkWithNodeBlock extends BlockBase implements ContainerFactoryPluginInt
    * @var \Drupal\Core\Form\FormBuilderInterface
    */
   protected FormBuilderInterface $formBuilder;
-  /**
-   * Module Handler.
-   *
-   * @var \Drupal\Core\Extension\ModuleHandlerInterface
-   */
-  protected ModuleHandlerInterface $moduleHandler;
 
   /**
    * The AI provider manager.
@@ -45,6 +40,14 @@ class AiTalkWithNodeBlock extends BlockBase implements ContainerFactoryPluginInt
    * @var \Drupal\ai\AiProviderPluginManager
    */
   protected $aiProviderManager;
+
+
+  /**
+   * Module handler.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface
+   */
+  protected ModuleHandlerInterface $moduleHandler;
 
   /**
    * {@inheritdoc}
