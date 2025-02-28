@@ -56,7 +56,20 @@ class AiTalkWIthNodeController extends ControllerBase {
    */
   protected $moduleHandler;
 
+  protected $aiProviderManager;
+
   private $logId;
+
+  private $blockId;
+
+  private $configuration;
+
+  protected $titleResolver;
+  protected $languageManager;
+  protected $configFactory;
+  protected $requestStack;
+
+
 
   /**
    * Constructor.
@@ -109,16 +122,16 @@ class AiTalkWIthNodeController extends ControllerBase {
   public function search(Request $request) {
     if ($request->get('block_id')) {
       $query = $request->get('query');
-      $block_id = $request->get('block_id');
-      $node_id = $request->get('node_id');
-      $stream = $request->get('stream');
+      $block_id = (string) $request->get('block_id');
+      $node_id = (int) $request->get('node_id');
+      $stream = (bool) $request->get('stream');
     }
     else {
       $data = Json::decode(file_get_contents('php://input'));
       $query = $data['query'];
-      $stream = $data['stream'];
+      $stream = (bool) $data['stream'];
       $block_id = $data['block_id'];
-      $node_id = $data['node_id'];
+      $node_id = (int) $data['node_id'];
     }
     $block = $this->blockEntity->load($block_id);
     $this->logId = 0;
@@ -132,7 +145,7 @@ class AiTalkWIthNodeController extends ControllerBase {
       $this->setBlockId($block_id);
       $context = $this->loadContextFromFile();
       $context .= $this->loadContextFromField($node_id);
-      $results = $this->doChatAction($query, $context);
+      $results = $this->doChatAction($query, $context, $node_id);
       if ($stream == "true" || $stream == "TRUE") {
         header('X-Accel-Buffering: no');
         // Making maximum execution time unlimited.
@@ -162,7 +175,6 @@ class AiTalkWIthNodeController extends ControllerBase {
     return strip_tags($node->get($instructions_field_name)->getString());
   }
   private function loadContextFromFile(){
-
     $instructions_fid = $this->configuration['instructions_file'];
     $file = File::load($instructions_fid);
     $uri = $file->getFileUri();
@@ -172,7 +184,7 @@ class AiTalkWIthNodeController extends ControllerBase {
     return $instructions_contents;
   }
 
-  private function doChatAction($query, $context){
+  private function doChatAction($query, $context, $node_id){
     $message = str_replace([
       '[question]',
       '[entity]',
@@ -227,7 +239,7 @@ class AiTalkWIthNodeController extends ControllerBase {
       $output = $provider->chat($input, $ai_model_to_use, ['ai_search_block']);
       $response = $output->getNormalized();
       if (is_object($response) && $response instanceof StreamedChatMessageIteratorInterface) {
-        return $this->streamBackResponse($response, '$message', $message, [$this->configuration['node_id']]);
+        return $this->streamBackResponse($response, '$message', $message, [$node_id]);
       }
       else {
         // Ai models that don't stream back?

@@ -6,13 +6,11 @@
       // Attach the submit handler only once per form.
       console.log('attach');
       once('aiTalkWithNodeForm', '.ai-talk-with-node-form', context).forEach(function (formElem) {
-        console.log('Talk with form');
         var $form = $(formElem);
 
         // Locate the results output region and the suffix text.
         var $resultsBlock = $('#ai-talk-with-node-response .ai-talk-with-node-output');
-        var $suffixText = $('#ai-talk-with-node-response .suffix_text');
-
+        var $suffixText = $('#ai-talk-block .suffix_text');
         if (!$resultsBlock.length) {
           console.warn('AI Search: Could not find a results block relative to the form.');
           return;
