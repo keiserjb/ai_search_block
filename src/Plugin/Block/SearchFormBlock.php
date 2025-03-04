@@ -94,6 +94,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'min_results' => 1,
       'no_results_message' => 'Sorry we have not found the content you were looking for. Please reformulate your question?',
       'max_results' => 20,
+      'render_mode' => 'node',
       'rendered_view_mode' => 'full',
       'llm_temp' => 0.5,
       'llm_model' => NULL,
@@ -229,13 +230,25 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       ],
     ];
 
+    $options = [
+      'chunks' => $this->t('Chunks'),
+      'node' => $this->t('Rendered node'),
+    ];
+    $form['rag']['render_mode'] = [
+      '#type' => 'select',
+      '#title' => $this->t('RAG render mode'),
+      '#description' => $this->t('Select a Render mode'),
+      '#options' => $options,
+      '#default_value' => $this->configuration['render_mode'],
+    ];
+
     $options = $this->entityDisplayRepository->getViewModeOptions('node');
     $form['rag']['rendered_view_mode'] = [
       '#type' => 'select',
       '#title' => $this->t('RAG rendered view mode'),
       '#description' => $this->t('Select a preferred view mode. If not found, the default view mode will be used for the given entity type.'),
       '#options' => $options,
-      '#default_value' => 'full',
+      '#default_value' => $this->configuration['rendered_view_mode'],
     ];
 
     $llm_model_options = $this->aiProviderManager->getSimpleProviderModelOptions('chat');
@@ -404,6 +417,7 @@ Example response 2:
     $this->configuration['min_results'] = $form_state->getValue('rag')['min_results'];
     $this->configuration['max_results'] = $form_state->getValue('rag')['max_results'];
     $this->configuration['no_results_message'] = $form_state->getValue('rag')['no_results_message'];
+    $this->configuration['render_mode'] = $form_state->getValue('rag')['render_mode'];
     $this->configuration['rendered_view_mode'] = $form_state->getValue('rag')['rendered_view_mode'];
     $this->configuration['aggregated_llm'] = $form_state->getValue('rag')['aggregated_llm'];
     $this->configuration['access_check'] = $form_state->getValue('rag')['access_check'];

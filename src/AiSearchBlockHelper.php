@@ -211,44 +211,54 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
   protected function fullEntityCheck(array $result_items, string $query_string, array $rag_database) {
     $entity_list = [];
     $rendered_entities = [];
-    foreach ($result_items as $result) {
-      $entity_string = $result->getExtraData('drupal_entity_id');
-      // Load the entity from search api key.
-      // @todo probably exists a function for this.
-      [, $entity_parts, $lang] = explode(':', $entity_string);
-      [$entity_type, $entity_id] = explode('/', $entity_parts);
-      /** @var \Drupal\Core\Entity\ContentEntityBase */
-      $entity = $this->entityTypeManager->getStorage($entity_type)
-        ->load($entity_id);
-      $entity_list[$entity_id] = [
-        'lang' => $lang,
-        'entity' => $entity,
-        'entity_type' => $entity_type,
-      ];
+    if ($this->configuration['render_mode'] == 'chunks') {
+      foreach ($result_items as $result) {
+        $chunk = $result->getExtraData('content');
+        $chunk = $this->cleanupMarkdown($chunk, NULL);
+        $rendered_entities[] = $chunk;
+      }
     }
 
-    // $entities are filtered now
-    foreach ($entity_list as $entity_id => $entity_array) {
-      $lang = $entity_array['lang'];
-      $entity = $entity_array['entity'];
-      $entity_type = $entity_array['entity_type'];
-      // Get translated if possible.
-      if (
-        $entity instanceof TranslatableInterface
-        && $entity->language()->getId() !== $lang
-        && $entity->hasTranslation($lang)
-      ) {
-        $entity = $entity->getTranslation($lang);
+    if ($this->configuration['render_mode'] == 'node') {
+      foreach ($result_items as $result) {
+        $entity_string = $result->getExtraData('drupal_entity_id');
+        // Load the entity from search api key.
+        // @todo probably exists a function for this.
+        [, $entity_parts, $lang] = explode(':', $entity_string);
+        [$entity_type, $entity_id] = explode('/', $entity_parts);
+        /** @var \Drupal\Core\Entity\ContentEntityBase */
+        $entity = $this->entityTypeManager->getStorage($entity_type)
+          ->load($entity_id);
+        $entity_list[$entity_id] = [
+          'lang' => $lang,
+          'entity' => $entity,
+          'entity_type' => $entity_type,
+        ];
       }
-      // Render the entity in selected view mode.
-      $view_mode = $this->configuration['aggregated_llm'] ?? 'full';
-      $pre_render_entity = $this->entityTypeManager->getViewBuilder($entity_type)
-        ->view($entity, $view_mode);
-      $rendered = $this->renderer->render($pre_render_entity);
-      $rendered = $this->cleanupHtml($rendered, $entity);
-      $markdown = $this->converter->convert((string) $rendered);
-      $markdown = $this->cleanupMarkdown($markdown, $entity);
-      $rendered_entities[] = $markdown;
+
+      // $entities are filtered now
+      foreach ($entity_list as $entity_id => $entity_array) {
+        $lang = $entity_array['lang'];
+        $entity = $entity_array['entity'];
+        $entity_type = $entity_array['entity_type'];
+        // Get translated if possible.
+        if (
+          $entity instanceof TranslatableInterface
+          && $entity->language()->getId() !== $lang
+          && $entity->hasTranslation($lang)
+        ) {
+          $entity = $entity->getTranslation($lang);
+        }
+        // Render the entity in selected view mode.
+        $view_mode = $this->configuration['rendered_view_mode'] ?? 'full';
+        $pre_render_entity = $this->entityTypeManager->getViewBuilder($entity_type)
+          ->view($entity, $view_mode);
+        $rendered = $this->renderer->render($pre_render_entity);
+        $rendered = $this->cleanupHtml($rendered, $entity);
+        $markdown = $this->converter->convert((string) $rendered);
+        $markdown = $this->cleanupMarkdown($markdown, $entity);
+        $rendered_entities[] = $markdown;
+      }
     }
 
     $message = str_replace([
