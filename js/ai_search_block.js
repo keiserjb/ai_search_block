@@ -30,6 +30,9 @@
         $form.on('submit', function (event) {
           event.preventDefault();
 
+          const submitButton = $form.find('[data-drupal-selector="edit-submit"]');
+          submitButton.prop('disabled', true);
+
           // Show the loader initially.
           $resultsBlock.html($loader);
 
@@ -83,6 +86,7 @@
                   if (xhr.status === 200) {
                     // Remove the loader upon successful completion.
                     $loader.remove();
+                    submitButton.prop('disabled', false);
                     if ($suffixText.length) {
                       $suffixText.html(drupalSettings.ai_search_block.suffix_text);
                       Drupal.attachBehaviors($suffixText[0]);
@@ -92,6 +96,7 @@
                   } else if (xhr.status === 500) {
                     $resultsBlock.html('An error happened.');
                     console.error('Error response:', xhr.responseText);
+                    submitButton.prop('disabled', false);
                     try {
                       var parsedError = JSON.parse(xhr.responseText);
                       if (parsedError.response && parsedError.response.answer_piece) {
@@ -137,9 +142,13 @@
                     $suffixText.html(drupalSettings.ai_search_block.suffix_text).show();
                     Drupal.attachBehaviors($suffixText[0]);
                   }
+                  submitButton.prop('disabled', false);
                 }
             ).fail(function () {
               $resultsBlock.html('An error happened.');
+              console.error('Error on non-streaming request');
+            }).always(function() {
+              submitButton.prop('disabled', false);
             });
           }
 
