@@ -83,9 +83,18 @@ class AiSearchBlockController extends ControllerBase {
     }
     else {
       $data = Json::decode(file_get_contents('php://input'));
-      $query = $data['query'];
-      $stream = $data['stream'];
-      $block_id = $data['block_id'];
+      $query = $data['query'] ?? NULL;
+      $stream = $data['stream'] ?? NULL;
+      $block_id = $data['block_id'] ?? NULL;
+    }
+    if (empty($block_id)) {
+      return new JsonResponse(
+        [
+          'response' => 'Missing required parameter: block_id',
+          'status' => 'error',
+        ],
+        400
+      );
     }
     $block = $this->blockEntity->load($block_id);
     $logId = 0;
