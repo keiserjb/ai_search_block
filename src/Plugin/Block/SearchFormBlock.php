@@ -90,7 +90,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'suffix_text' => 'Done',
       'stream' => TRUE,
       'database' => NULL,
-      'score_threshold' => 0.6,
+      'score_threshold' => 0.4,
       'min_results' => 1,
       'no_results_message' => 'Sorry we have not found the content you were looking for. Please reformulate your question?',
       'max_results' => 20,
