@@ -180,6 +180,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       '#title' => $this->t('Source database'),
       '#options' => $this->getSearchDatabases(),
       '#default_value' => $this->configuration['database'],
+      '#required' => TRUE,
     ];
     $form['rag'] = [
       '#type' => 'fieldset',
