@@ -73,7 +73,11 @@ class AiSearchBlockController extends ControllerBase {
   /**
    * Returns a renderable array for a test page.
    *
-   * Return []
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The request object.
+   *
+   * @return mixed
+   *   The response.
    */
   public function search(Request $request) {
     if ($request->get('block_id')) {

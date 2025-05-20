@@ -104,6 +104,8 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'block_enabled' => FALSE,
       'block_words' => 'prompt',
       'block_response' => 'This question contained blocked words.',
+      'enable_prefix' => FALSE,
+      'prefix_template' => '',
     ];
   }
 
@@ -182,10 +184,12 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       '#default_value' => $this->configuration['database'],
       '#required' => TRUE,
     ];
+
     $form['rag'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('RAG Settings'),
     ];
+
     $form['rag']['score_threshold'] = [
       '#type' => 'number',
       '#title' => $this->t('RAG threshold'),
@@ -347,6 +351,26 @@ Example response 2:
       ],
     ];
 
+    $form['rag']['enable_prefix'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Enable retrieval prefix'),
+      '#description' => $this->t('Add a prefix to the user query during retrieval. Required for asymmetric embedding models like multilingual-e5-large-instruct or GTE-QWEN.'),
+      '#default_value' => $this->configuration['enable_prefix'],
+    ];
+
+    $form['rag']['prefix_template'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Prefix template'),
+      '#description' => $this->t('Template for the prefix to add before the user query. Use {query} as placeholder for the actual query.<br>Use actual line breaks (press Enter) for multi-line templates.<br><br>Example:<br>Instruct: Find information about the following topic.<br>Query: {query}'),
+      '#default_value' => $this->configuration['prefix_template'],
+      '#states' => [
+        'visible' => [
+          ':input[name="settings[rag][enable_prefix]"]' => ['checked' => TRUE],
+        ],
+      ],
+      '#rows' => 3,
+    ];
+
     $form['rag']['llm_temp'] = [
       '#type' => 'number',
       '#title' => $this->t('LLM Temperature'),
@@ -421,6 +445,8 @@ Example response 2:
     $this->configuration['render_mode'] = $form_state->getValue('rag')['render_mode'];
     $this->configuration['rendered_view_mode'] = $form_state->getValue('rag')['rendered_view_mode'];
     $this->configuration['aggregated_llm'] = $form_state->getValue('rag')['aggregated_llm'];
+    $this->configuration['enable_prefix'] = $form_state->getValue('rag')['enable_prefix'];
+    $this->configuration['prefix_template'] = $form_state->getValue('rag')['prefix_template'];
     $this->configuration['access_check'] = $form_state->getValue('rag')['access_check'];
     $this->configuration['context_threshold'] = $form_state->getValue('rag')['context_threshold'];
     $this->configuration['llm_model'] = $form_state->getValue('rag')['llm_model'];

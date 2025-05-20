@@ -433,7 +433,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
    *
    * @param array $rag_database
    *   The RAG database array data.
-   * @param \Drupal\ai_search_block\string $query_string
+   * @param string $query_string
    *   The query to search for (optional).
    *
    * @return \Drupal\search_api\Query\ResultSetInterface
@@ -456,7 +456,10 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       ]);
       $query->setOption('search_api_bypass_access', ($this->configuration['access_check'] == 'false'));
       $query->setOption('search_api_ai_get_chunks_result', 'rendered');
-      $queries = $query_string;
+
+      // Apply the prefix template to the query string if enabled.
+      $queries = $this->applyQueryPrefix($query_string);
+
       $query->keys($queries);
       $results = $query->execute();
     }
@@ -464,6 +467,25 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       throw new \Exception('Failed to search: ' . $e->getMessage());
     }
     return $results;
+  }
+
+  /**
+   * Applies the prefix template to the query string if enabled.
+   *
+   * @param string $query_string
+   *   The original query string.
+   *
+   * @return string
+   *   The potentially modified query string with prefix applied.
+   */
+  protected function applyQueryPrefix(string $query_string): string {
+    if (!empty($this->configuration['enable_prefix']) && !empty($this->configuration['prefix_template'])) {
+      $prefix_template = $this->configuration['prefix_template'];
+      // Replace {query} placeholder with the actual query string.
+      return str_replace('{query}', $query_string, $prefix_template);
+    }
+
+    return $query_string;
   }
 
   /**

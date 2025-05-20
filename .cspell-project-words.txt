@@ -2,3 +2,5 @@ animloader
 grumphp
 jqxhr
 preprompt
+gte
+qwen
