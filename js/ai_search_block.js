@@ -188,49 +188,63 @@
           var blockIdVal = $form.find('[data-drupal-selector="edit-block-id"]').val() || '';
 
           function fetchDbResults(page) {
-            if (typeof page === 'undefined') page = 0;
+        // Keep track of the current in-flight DB request so we can cancel it if needed.
+        var currentDbRequest = null;
 
-            $dbResults.html('<p class="loading_text">Loading database results...</p>');
+        function fetchDbResults(page) {
+          if (typeof page === 'undefined') page = 0;
 
-            $.ajax({
-              url: (drupalSettings.ai_search_block && drupalSettings.ai_search_block.db_results_url) || '/ai-search-block/db-results',
-              type: 'POST',
-              data: {
-                query: queryVal,
-                block_id: blockIdVal,
-                page: page
-              },
-              success: function (data) {
-                if (data && data.html) {
-                  $dbResults.html(data.html);
+          // Cancel any in-flight request
+          if (currentDbRequest && currentDbRequest.readyState !== 4) {
+            currentDbRequest.abort();
+          }
 
-                  // Kill Views' own AJAX class if it slipped in.
-                  $dbResults.find('a.use-ajax').removeClass('use-ajax');
+          $dbResults.html('<p class="loading_text">Loading database results...</p>');
 
-                  // Ensure responsive grid CSS is present (one-time)
-                  if (!$('link[href*="views-responsive-grid.css"]').length) {
-                    var link = document.createElement('link');
-                    link.rel = 'stylesheet';
-                    link.href = drupalSettings.path.baseUrl + 'core/modules/views/css/views-responsive-grid.css';
-                    document.head.appendChild(link);
-                  }
+          currentDbRequest = $.ajax({
+            url: (drupalSettings.ai_search_block && drupalSettings.ai_search_block.db_results_url) || '/ai-search-block/db-results',
+            type: 'POST',
+            data: {
+              query: queryVal,
+              block_id: blockIdVal,
+              page: page
+            },
+            success: function (data) {
+              if (data && data.html) {
+                $dbResults.html(data.html);
 
-                  // Reattach behaviors for markup (tooltips, etc.)
-                  Drupal.attachBehaviors($dbResults[0]);
+                // Kill Views' own AJAX class if it slipped in.
+                $dbResults.find('a.use-ajax').removeClass('use-ajax');
 
-                  // Keep pager UI correct for the page we just requested
-                  fixPager($dbResults, page || 0, queryVal);
+                // Ensure responsive grid CSS is present (one-time)
+                if (!$('link[href*="views-responsive-grid.css"]').length) {
+                  var link = document.createElement('link');
+                  link.rel = 'stylesheet';
+                  link.href = drupalSettings.path.baseUrl + 'core/modules/views/css/views-responsive-grid.css';
+                  document.head.appendChild(link);
+                }
 
-                  // Hide the exposed filter reliably
-                  hideExposedForm($dbResults);
+                // Reattach behaviors for markup (tooltips, etc.)
+                Drupal.attachBehaviors($dbResults[0]);
 
-                  // Scroll back to the top of results
-                  scrollToResults($dbResults);
+                // Keep pager UI correct for the page we just requested
+                fixPager($dbResults, page || 0, queryVal);
 
-                  // Delegate pager clicks to our AJAX loader (avoid stacking)
-                  $dbResults.off('click.aiPager').on('click.aiPager', 'a', function (e) {
+                // Hide the exposed filter reliably
+                hideExposedForm($dbResults);
+
+                // Scroll back to the top of results
+                scrollToResults($dbResults);
+
+                // Delegate pager clicks to our AJAX loader (avoid stacking)
+                $dbResults
+                  .off('click.aiPager')
+                  .on('click.aiPager', 'a', function (e) {
                     var href = this.getAttribute('href') || '';
-                    if (href.indexOf('page=') !== -1 || $(this).closest('.pager, .pagination, .views-pager').length) {
+                    if (
+                      href.indexOf('page=') !== -1 ||
+                      $(this).closest('.pager, .pagination, .views-pager').length
+                    ) {
                       e.preventDefault();
                       e.stopPropagation();
                       e.stopImmediatePropagation();
@@ -241,15 +255,15 @@
                       return false;
                     }
                   });
-                } else {
-                  $dbResults.html('<p>No database results found.</p>');
-                }
-              },
-              error: function () {
-                $dbResults.html('<p>Error loading database results.</p>');
+              } else {
+                $dbResults.html('<p>No database results found.</p>');
               }
-            });
-          }
+            },
+            error: function () {
+              $dbResults.html('<p>Error loading database results.</p>');
+            }
+          });
+        }
 
           if (streamVal) {
             try {
