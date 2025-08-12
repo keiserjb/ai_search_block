@@ -12,5 +12,5 @@ ai_search_block.db_results:
     _controller: '\Drupal\ai_search_block\Controller\AiSearchBlockController::getDbResults'
     _title: 'Database Search Results'
   requirements:
-    _access: 'TRUE'
+    _permission: 'access content'
   methods: [POST]
