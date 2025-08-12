@@ -158,7 +158,7 @@ class AiSearchBlockController extends ControllerBase {
     [$view_id, $display_id] = explode(':', $settings['database_results_view']);
     $view = \Drupal\views\Views::getView($view_id);
     if (!$view) {
-      return new JsonResponse(['html' => '<p>Error: Could not load view.</p>']);
+      return new JsonResponse(['html' => '<p>Error: Could not load view.</p>'], 400);
     }
 
     // Use the correct display.
