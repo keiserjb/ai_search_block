@@ -11,6 +11,7 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Url;
 use Drupal\ai_search_block\Form\SearchForm;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\views\Views;
 
 /**
  * Provides an AI form block.
@@ -107,6 +108,9 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'block_response' => 'This question contained blocked words.',
       'enable_prefix' => FALSE,
       'prefix_template' => '',
+      // ADD THESE:
+      'enable_database_results' => 0,     // checkbox default: unchecked
+      'database_results_view'   => '',    // no view selected
     ];
   }
 
@@ -320,20 +324,22 @@ You can also reformat Markdown as HTML.
 Always add the URI to the used resource in the snippet or below the response.
 
 Example response 1:
-```html
+html
 <h3>Example title<h3>
 <p>This is a textual response with a <a href="">link</a>.<p>
-```
+
 Example response 2:
-```html
+html
 <p>This is a textual response with a <a href="">link</a>.<p>
 <ul>
 <li>option 1</li>
 <li>option 2</li>
 </ul>
-```
 
-(respond like examples but without the starting ```html and trailing ```).
+
+(respond like examples but without the starting
+html and trailing
+).
 ');
 
     $form['rag']['aggregated_llm'] = [
@@ -423,6 +429,64 @@ Example response 2:
         ],
       ],
     ];
+    $view_options = [];
+    $storage = \Drupal::entityTypeManager()->getStorage('view');
+    $all_views = $storage->loadMultiple();
+
+    foreach ($all_views as $view_id => $view_entity) {
+      // Only enabled views.
+      if (!$view_entity->status()) {
+        continue;
+      }
+      $view_label = $view_entity->label();
+      $displays = $view_entity->get('display');
+      foreach ($displays as $display_id => $display) {
+        $display_title = $display['display_title'] ?? $display_id;
+        $label = $view_label . ' : ' . $display_title . " ({$view_id}:{$display_id})";
+        $view_options["{$view_id}:{$display_id}"] = $label;
+      }
+    }
+
+    $form['enable_database_results'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Enable database (traditional) search results'),
+      '#default_value' => $this->configuration['enable_database_results'] ?? 0,
+      '#description' => $this->t('Show results from a Drupal View below the AI answer.'),
+    ];
+
+    $view_options = [];
+    $views_storage = \Drupal::entityTypeManager()->getStorage('view');
+    $views = $views_storage->loadMultiple();
+    foreach ($views as $view_id => $view) {
+      if (!$view->status()) continue;
+      $displays = $view->get('display');
+      foreach ($displays as $display_id => $display) {
+        // Log/display the display_plugin for debugging.
+        // \Drupal::logger('ai_search_block')->notice('View: @v, Display: @d, Plugin: @p', ['@v' => $view_id, '@d' => $display_id, '@p' => $display['display_plugin']]);
+        // To see ALL types, skip this filter for now:
+        // if (!in_array($display['display_plugin'], $types)) continue;
+        $plugin_type = $display['display_plugin'] ?? '';
+        $label = $view->label() . " : " . $display['display_title'] . " ({$view_id}:{$display_id}, type: $plugin_type)";
+        $view_options["$view_id:$display_id"] = $label;
+      }
+    }
+
+
+
+    $form['database_results_view'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Database results View display'),
+      '#options' => $view_options,
+      '#empty_option' => $this->t('- None -'),
+      '#default_value' => $this->configuration['database_results_view'],
+      '#description' => $this->t('Select the View and display to use for DB search results.'),
+      '#states' => [
+        'visible' => [
+          ':input[name="settings[enable_database_results]"]' => ['checked' => TRUE],
+        ],
+      ],
+    ];
+
     return $form;
   }
 
@@ -468,11 +532,17 @@ Example response 2:
     $this->configuration['block_words'] = $form_state->getValue('block')['block_words'];
     $this->configuration['block_response'] = $form_state->getValue('block')['block_response'];
 
+    // Add these two lines for DB results.
+    $this->configuration['enable_database_results'] = $form_state->getValue('enable_database_results') ? 1 : 0;
+    // Only save the view selection if the checkbox is checked, otherwise clear it.
+    $this->configuration['database_results_view'] = $this->configuration['enable_database_results']
+      ? $form_state->getValue('database_results_view')
+      : '';
+
     // llm_model.
     if (method_exists($form_state->getBuildInfo()['callback_object'], 'getEntity')) {
       // Likely this is the stock drupal block layout config.
-      $this->configuration['block_id'] = $form_state->getBuildInfo()['callback_object']->getEntity()
-        ->id();
+      $this->configuration['block_id'] = $form_state->getBuildInfo()['callback_object']->getEntity()->id();
       $this->configuration['block_offset'] = '';
     }
     else {
@@ -494,20 +564,51 @@ Example response 2:
   public function build(): array {
     $block = [];
     $block['#settings'] = $this->configuration;
-    $url = Url::fromRoute('ai_search_block.api', [], ['absolute' => FALSE]);
-    $block['#attached']['drupalSettings']['ai_search_block']['submit_url'] = $url->toString();
+
+    // Existing AI settings.
+    $submit_url = Url::fromRoute('ai_search_block.api', [], ['absolute' => FALSE])->toString();
+    $block['#attached']['drupalSettings']['ai_search_block']['submit_url'] = $submit_url;
     $block['#attached']['drupalSettings']['ai_search_block']['loading_text'] = $this->configuration['loading_text'];
     $block['#attached']['drupalSettings']['ai_search_block']['suffix_text'] = $this->configuration['suffix_text'];
+
+    // NEW: pass DB-results config to JS so it knows whether to fetch and where.
+    $block['#attached']['drupalSettings']['ai_search_block']['enable_database_results']
+      = !empty($this->configuration['enable_database_results']);
+    $block['#attached']['drupalSettings']['ai_search_block']['database_results_view']
+      = $this->configuration['database_results_view'] ?? '';
+    // Route the JS will hit to fetch HTML for the view.
+    $db_results_url = Url::fromRoute('ai_search_block.db_results', [], ['absolute' => FALSE])->toString();
+    $block['#attached']['drupalSettings']['ai_search_block']['db_results_url'] = $db_results_url;
+
+    // Build the form.
     $form_state = new FormState();
     $form_state
       ->addBuildInfo('block_id', $this->getPluginId())
       ->addBuildInfo('search_config', $this->configuration);
     $form = $this->formBuilder->buildForm(SearchForm::class, $form_state);
+
+    // Theme + library.
     $block['#theme'] = 'ai_search_block_wrapper';
     $block['#attached']['library'][] = 'ai_search_block/ai_search_block';
     $block['#rendered_form'] = $form;
+
+    // Placeholder where AI response streams.
     $block['#output'] = ' ';
+
+    // NEW: placeholder container where DB results will be injected by JS after streaming.
+    $block['database_results_placeholder'] = [
+      '#type' => 'container',
+      '#attributes' => [
+        'id' => 'ai-db-results',
+        'class' => ['ai-db-results'],
+      ],
+      // Optional: small loader placeholder. JS will replace this.
+      '#markup' => '',
+      '#weight' => 100,
+    ];
+
     return $block;
   }
+
 
 }
