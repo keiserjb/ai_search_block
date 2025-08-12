@@ -138,9 +138,9 @@ class AiSearchBlockController extends ControllerBase {
   }
 
   public function getDbResults(Request $request) {
-    $query = (string) $request->get('query');
+    $query    = trim((string) $request->get('query'));
     $block_id = $request->get('block_id');
-    $page = (int) ($request->get('page') ?? 0); // zero-based
+    $page     = max(0, (int) ($request->get('page') ?? 0)); // zero-based, ensure non-negative
 
     if (empty($block_id)) {
       return new JsonResponse(['html' => '<p>Error: Missing block_id.</p>']);
@@ -155,7 +155,6 @@ class AiSearchBlockController extends ControllerBase {
     if (empty($settings['database_results_view'])) {
       return new JsonResponse(['html' => '<p>No database view configured.</p>']);
     }
-
     [$view_id, $display_id] = explode(':', $settings['database_results_view']);
     $view = \Drupal\views\Views::getView($view_id);
     if (!$view) {
