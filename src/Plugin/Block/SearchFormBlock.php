@@ -455,7 +455,7 @@ html and trailing
     ];
 
     $view_options = [];
-    $views_storage = \Drupal::entityTypeManager()->getStorage('view');
+    $views_storage = $this->entityTypeManager->getStorage('view');
     $views = $views_storage->loadMultiple();
     foreach ($views as $view_id => $view) {
       if (!$view->status()) continue;
