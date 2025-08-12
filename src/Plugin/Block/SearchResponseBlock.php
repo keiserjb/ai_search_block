@@ -18,8 +18,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 class SearchResponseBlock extends BlockBase implements ContainerFactoryPluginInterface {
 
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    // Container parameter is required by the interface but not used in this implementation.
     return new static($configuration, $plugin_id, $plugin_definition);
-  }
 
   public function defaultConfiguration(): array {
     return [
