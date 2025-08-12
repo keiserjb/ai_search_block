@@ -12,4 +12,5 @@ reviews:
     enabled: true
     drafts: false
 chat:
+chat:
   auto_reply: true
