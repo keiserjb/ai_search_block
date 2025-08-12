@@ -5,3 +5,12 @@ ai_search_block.api:
     _title: 'Hello World'
   requirements:
     _permission: 'access content'
+
+ai_search_block.db_results:
+  path: '/ai-search-block/db-results'
+  defaults:
+    _controller: '\Drupal\ai_search_block\Controller\AiSearchBlockController::getDbResults'
+    _title: 'Database Search Results'
+  requirements:
+    _access: 'TRUE'
+  methods: [POST]

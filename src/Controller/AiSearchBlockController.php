@@ -10,6 +10,8 @@ use Drupal\Core\Session\AccountProxyInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Drupal\Core\Render\RendererInterface;
+use Drupal\Core\Render\RenderContext;
 
 /**
  * An example controller.
@@ -134,5 +136,90 @@ class AiSearchBlockController extends ControllerBase {
         ]);
     }
   }
+
+  public function getDbResults(Request $request) {
+    $query = (string) $request->get('query');
+    $block_id = $request->get('block_id');
+    $page = (int) ($request->get('page') ?? 0); // zero-based
+
+    if (empty($block_id)) {
+      return new JsonResponse(['html' => '<p>Error: Missing block_id.</p>']);
+    }
+
+    $block = $this->blockEntity->load($block_id);
+    if (!$block) {
+      return new JsonResponse(['html' => '<p>Error: Invalid block configuration.</p>']);
+    }
+
+    $settings = $block->get('settings');
+    if (empty($settings['database_results_view'])) {
+      return new JsonResponse(['html' => '<p>No database view configured.</p>']);
+    }
+
+    [$view_id, $display_id] = explode(':', $settings['database_results_view']);
+    $view = \Drupal\views\Views::getView($view_id);
+    if (!$view) {
+      return new JsonResponse(['html' => '<p>Error: Could not load view.</p>']);
+    }
+
+    // Use the correct display.
+    $view->setDisplay($display_id);
+
+    // ----- Exposed input (optional) -----
+    // Try to find the exposed fulltext identifier; default to 'search_api_fulltext'.
+    $filters = $view->display_handler->getOption('filters') ?: [];
+    $filter_key = 'search_api_fulltext';
+    foreach ($filters as $id => $filter) {
+      if (!empty($filter['expose']['identifier']) && $filter['id'] === 'search_api_fulltext') {
+        $filter_key = $filter['expose']['identifier'];
+        break;
+      }
+    }
+    if ($query !== '') {
+      $view->setExposedInput([$filter_key => $query]);
+    }
+
+    // ----- Pager element-aware Request -----
+    // Views reads current page from Request query param 'page[<element>]=N'.
+    $pager_plugin = $view->display_handler->getPlugin('pager');
+    $element = 0;
+    if ($pager_plugin && method_exists($pager_plugin, 'getPagerId')) {
+      $element = (int) $pager_plugin->getPagerId();
+    } elseif ($view->getPager() && method_exists($view->getPager(), 'getPagerId')) {
+      $element = (int) $view->getPager()->getPagerId();
+    }
+
+    // Duplicate current request and inject the proper pager param.
+    $current = \Drupal::requestStack()->getCurrentRequest();
+    $sub = $current->duplicate();
+    if ($query !== '') {
+      $sub->query->set($filter_key, $query);
+    }
+    // CRITICAL: 'page' must be an array keyed by pager element id.
+    $sub->query->set('page', [$element => $page]);
+
+    // Make Views use this request.
+    $view->setRequest($sub);
+
+    // ----- Execute with page set BEFORE execution -----
+    $view->preExecute();
+    if ($view->getPager()) {
+      $view->getPager()->setCurrentPage($page); // zero-based
+    } elseif (method_exists($view, 'setCurrentPage')) {
+      $view->setCurrentPage($page);
+    }
+    $view->executeDisplay($display_id);
+
+    // ----- Render -----
+    $build = $view->render();
+    if (is_array($build)) {
+      $build['#cache']['max-age'] = 0;
+    }
+    $html = \Drupal::service('renderer')->renderRoot($build);
+
+    return new JsonResponse(['html' => $html]);
+  }
+
+
 
 }
