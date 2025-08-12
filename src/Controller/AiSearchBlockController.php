@@ -153,7 +153,11 @@ class AiSearchBlockController extends ControllerBase {
     if (empty($settings['database_results_view'])) {
       return new JsonResponse(['html' => '<p>No database view configured.</p>'], 400);
     }
-    [$view_id, $display_id] = explode(':', $settings['database_results_view']);
+    $view_parts = explode(':', $settings['database_results_view']);
+    if (count($view_parts) !== 2) {
+      return new JsonResponse(['html' => '<p>Error: Invalid view configuration format.</p>']);
+    }
+    [$view_id, $display_id] = $view_parts;
     $view = \Drupal\views\Views::getView($view_id);
     if (!$view) {
       return new JsonResponse(['html' => '<p>Error: Could not load view.</p>'], 400);
