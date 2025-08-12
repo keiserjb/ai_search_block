@@ -168,7 +168,7 @@ class AiSearchBlockController extends ControllerBase {
     // Try to find the exposed fulltext identifier; default to 'search_api_fulltext'.
     $filters = $view->display_handler->getOption('filters') ?: [];
     $filter_key = 'search_api_fulltext';
-    foreach ($filters as $id => $filter) {
+    foreach ($filters as $filter) {
       if (!empty($filter['expose']['identifier']) && $filter['id'] === 'search_api_fulltext') {
         $filter_key = $filter['expose']['identifier'];
         break;
