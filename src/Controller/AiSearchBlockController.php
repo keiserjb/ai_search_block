@@ -10,8 +10,6 @@ use Drupal\Core\Session\AccountProxyInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Drupal\Core\Render\RendererInterface;
-use Drupal\Core\Render\RenderContext;
 
 /**
  * An example controller.
