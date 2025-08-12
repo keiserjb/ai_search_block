@@ -40,17 +40,20 @@ class SearchResponseBlock extends BlockBase implements ContainerFactoryPluginInt
 
     // Place the Views block natively so Views AJAX works normally.
     if (!empty($this->configuration['enable_database_results']) && !empty($this->configuration['database_results_view'])) {
-      [$view_id, $display_id] = explode(':', $this->configuration['database_results_view']);
-      $plugin_id = "views_block:{$view_id}-{$display_id}";
+      $view_parts = explode(':', $this->configuration['database_results_view']);
+      if (count($view_parts) === 2) {
+        [$view_id, $display_id] = $view_parts;
+        $plugin_id = "views_block:{$view_id}-{$display_id}";
 
-      $plugin_block = \Drupal::service('plugin.manager.block')->createInstance($plugin_id, [
-        // Optional per-block settings; leave empty to use display defaults.
-      ]);
-      $views_build = $plugin_block->build();
-      // Wrap with a known ID so JS can find the exposed form reliably.
-      $views_build['#attributes']['id'] = 'ai-db-results-block';
-      // Ensure Views' own AJAX/cache metadata is preserved.
-      $build['db_results'] = $views_build + ['#weight' => 100];
+        $plugin_block = \Drupal::service('plugin.manager.block')->createInstance($plugin_id, [
+          // Optional per-block settings; leave empty to use display defaults.
+        ]);
+        $views_build = $plugin_block->build();
+        // Wrap with a known ID so JS can find the exposed form reliably.
+        $views_build['#attributes']['id'] = 'ai-db-results-block';
+        // Ensure Views' own AJAX/cache metadata is preserved.
+        $build['db_results'] = $views_build + ['#weight' => 100];
+      }
     }
 
     return $build;
