@@ -430,22 +430,6 @@ html and trailing
       ],
     ];
     $view_options = [];
-    $storage = \Drupal::entityTypeManager()->getStorage('view');
-    $all_views = $storage->loadMultiple();
-
-    foreach ($all_views as $view_id => $view_entity) {
-      // Only enabled views.
-      if (!$view_entity->status()) {
-        continue;
-      }
-      $view_label = $view_entity->label();
-      $displays = $view_entity->get('display');
-      foreach ($displays as $display_id => $display) {
-        $display_title = $display['display_title'] ?? $display_id;
-        $label = $view_label . ' : ' . $display_title . " ({$view_id}:{$display_id})";
-        $view_options["{$view_id}:{$display_id}"] = $label;
-      }
-    }
 
     $form['enable_database_results'] = [
       '#type' => 'checkbox',
