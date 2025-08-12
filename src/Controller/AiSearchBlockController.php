@@ -143,17 +143,17 @@ class AiSearchBlockController extends ControllerBase {
     $page     = max(0, (int) ($request->get('page') ?? 0)); // zero-based, ensure non-negative
 
     if (empty($block_id)) {
-      return new JsonResponse(['html' => '<p>Error: Missing block_id.</p>']);
+      return new JsonResponse(['html' => '<p>Error: Missing block_id.</p>'], 400);
     }
 
     $block = $this->blockEntity->load($block_id);
     if (!$block) {
-      return new JsonResponse(['html' => '<p>Error: Invalid block configuration.</p>']);
+      return new JsonResponse(['html' => '<p>Error: Invalid block configuration.</p>'], 400);
     }
 
     $settings = $block->get('settings');
     if (empty($settings['database_results_view'])) {
-      return new JsonResponse(['html' => '<p>No database view configured.</p>']);
+      return new JsonResponse(['html' => '<p>No database view configured.</p>'], 400);
     }
     [$view_id, $display_id] = explode(':', $settings['database_results_view']);
     $view = \Drupal\views\Views::getView($view_id);
