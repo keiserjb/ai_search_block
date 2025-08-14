@@ -153,11 +153,12 @@ class AiSearchBlockController extends ControllerBase {
     if (empty($settings['database_results_view'])) {
       return new JsonResponse(['html' => '<p>No database view configured.</p>'], 400);
     }
+
     $view_parts = explode(':', $settings['database_results_view']);
-    if (count($view_parts) !== 2) {
     if (count($view_parts) !== 2) {
       return new JsonResponse(['html' => '<p>Error: Invalid view configuration format.</p>'], 400);
     }
+
     [$view_id, $display_id] = $view_parts;
     $view = \Drupal\views\Views::getView($view_id);
     if (!$view) {
@@ -168,7 +169,6 @@ class AiSearchBlockController extends ControllerBase {
     $view->setDisplay($display_id);
 
     // ----- Exposed input (optional) -----
-    // Try to find the exposed fulltext identifier; default to 'search_api_fulltext'.
     $filters = $view->display_handler->getOption('filters') ?: [];
     $filter_key = 'search_api_fulltext';
     foreach ($filters as $filter) {
@@ -182,7 +182,6 @@ class AiSearchBlockController extends ControllerBase {
     }
 
     // ----- Pager element-aware Request -----
-    // Views reads current page from Request query param 'page[<element>]=N'.
     $pager_plugin = $view->display_handler->getPlugin('pager');
     $element = 0;
     if ($pager_plugin && method_exists($pager_plugin, 'getPagerId')) {
@@ -191,19 +190,16 @@ class AiSearchBlockController extends ControllerBase {
       $element = (int) $view->getPager()->getPagerId();
     }
 
-    // Duplicate current request and inject the proper pager param.
     $current = \Drupal::requestStack()->getCurrentRequest();
     $sub = $current->duplicate();
     if ($query !== '') {
       $sub->query->set($filter_key, $query);
     }
-    // CRITICAL: 'page' must be an array keyed by pager element id.
-    $sub->query->set('page', [$element => $page]);
+    $sub->query->set('page', [$element => $page]); // Views expects page[<element>]=N
 
-    // Make Views use this request.
     $view->setRequest($sub);
 
-    // ----- Execute with page set BEFORE execution -----
+    // Execute with page set BEFORE execution.
     $view->preExecute();
     if ($view->getPager()) {
       $view->getPager()->setCurrentPage($page); // zero-based
@@ -212,7 +208,7 @@ class AiSearchBlockController extends ControllerBase {
     }
     $view->executeDisplay($display_id);
 
-    // ----- Render -----
+    // Render.
     $build = $view->render();
     if (is_array($build)) {
       $build['#cache']['max-age'] = 0;
@@ -221,7 +217,5 @@ class AiSearchBlockController extends ControllerBase {
 
     return new JsonResponse(['html' => $html]);
   }
-
-
 
 }
