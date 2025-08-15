@@ -517,8 +517,28 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       if ((float) $this->configuration['score_threshold'] > $result->getScore()) {
         continue;
       }
+
+      // Resolve the entity behind the hit (works for both 'chunks' and 'node' modes
+      // as long as drupal_entity_id is present in extra data).
+      $entity_string = $result->getExtraData('drupal_entity_id');
+      if ($entity_string) {
+        [, $entity_parts] = explode(':', $entity_string, 3); // e.g. "entity:node/123"
+        [$entity_type, $entity_id] = explode('/', $entity_parts, 2);
+        $entity = $this->entityTypeManager->getStorage($entity_type)->load($entity_id);
+
+        // Only include if the current user may view it.
+        if (!$entity || !$entity->access('view', $this->currentUser)) {
+          continue;
+        }
+        // Optional belt-and-suspenders for nodes:
+        if ($entity_type === 'node' && method_exists($entity, 'isPublished') && !$entity->isPublished()) {
+          continue;
+        }
+      }
+
       $result_items[] = $result;
     }
+
     if (!empty($result_items)) {
       return $this->fullEntityCheck($result_items, $query, $rag_database);
     }
