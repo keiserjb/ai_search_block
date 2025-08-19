@@ -187,86 +187,86 @@
           var streamVal = $form.find('[data-drupal-selector="edit-stream"]').val() === 'true';
           var blockIdVal = $form.find('[data-drupal-selector="edit-block-id"]').val() || '';
 
-  // Track the current in-flight DB request so we can cancel it between pages/searches.
-  var currentDbRequest = null;
-  function fetchDbResults(page) {
-    if (typeof page === 'undefined') page = 0;
+          // Track the current in-flight DB request so we can cancel it between pages/searches.
+          var currentDbRequest = null;
+          function fetchDbResults(page) {
+            if (typeof page === 'undefined') page = 0;
 
-    // Cancel any in-flight request
-    if (currentDbRequest && currentDbRequest.readyState !== 4) {
-      currentDbRequest.abort();
-    }
+            // Cancel any in-flight request
+            if (currentDbRequest && currentDbRequest.readyState !== 4) {
+              currentDbRequest.abort();
+            }
 
-    $dbResults.html('<p class="loading_text">Loading database results...</p>');
+            $dbResults.html('<p class="loading_text">Loading database results...</p>');
 
-    currentDbRequest = $.ajax({
-      url:
-        (drupalSettings.ai_search_block &&
-          drupalSettings.ai_search_block.db_results_url) ||
-        '/ai-search-block/db-results',
-      type: 'POST',
-      data: {
-        query: queryVal,
-        block_id: blockIdVal,
-        page: page,
-      },
-      success: function (data) {
-        if (data && data.html) {
-          $dbResults.html(data.html);
+            currentDbRequest = $.ajax({
+              url:
+                (drupalSettings.ai_search_block &&
+                  drupalSettings.ai_search_block.db_results_url) ||
+                '/ai-search-block/db-results',
+              type: 'POST',
+              data: {
+                query: queryVal,
+                block_id: blockIdVal,
+                page: page,
+              },
+              success: function (data) {
+                if (data && data.html) {
+                  $dbResults.html(data.html);
 
-          // Kill Views' own AJAX class if it slipped in.
-          $dbResults.find('a.use-ajax').removeClass('use-ajax');
+                  // Kill Views' own AJAX class if it slipped in.
+                  $dbResults.find('a.use-ajax').removeClass('use-ajax');
 
-          // Ensure responsive grid CSS is present (one-time)
-          if (!$('link[href*="views-responsive-grid.css"]').length) {
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href =
-              drupalSettings.path.baseUrl +
-              'core/modules/views/css/views-responsive-grid.css';
-            document.head.appendChild(link);
-          }
+                  // Ensure responsive grid CSS is present (one-time)
+                  if (!$('link[href*="views-responsive-grid.css"]').length) {
+                    var link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href =
+                      drupalSettings.path.baseUrl +
+                      'core/modules/views/css/views-responsive-grid.css';
+                    document.head.appendChild(link);
+                  }
 
-          // Reattach behaviors for markup (tooltips, etc.)
-          Drupal.attachBehaviors($dbResults[0]);
+                  // Reattach behaviors for markup (tooltips, etc.)
+                  Drupal.attachBehaviors($dbResults[0]);
 
-          // Keep pager UI correct for the page we just requested
-          fixPager($dbResults, page || 0, queryVal);
+                  // Keep pager UI correct for the page we just requested
+                  fixPager($dbResults, page || 0, queryVal);
 
-          // Hide the exposed filter reliably
-          hideExposedForm($dbResults);
+                  // Hide the exposed filter reliably
+                  hideExposedForm($dbResults);
 
-          // Scroll back to the top of results
-          scrollToResults($dbResults);
+                  // Scroll back to the top of results
+                  scrollToResults($dbResults);
 
-          // Delegate pager clicks to our AJAX loader (avoid stacking)
-          $dbResults
-            .off('click.aiPager')
-            .on('click.aiPager', 'a', function (e) {
-              var href = this.getAttribute('href') || '';
-              if (
-                href.indexOf('page=') !== -1 ||
-                $(this).closest('.pager, .pagination, .views-pager').length
-              ) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                var nextPage = getPageFromHref(href);
-                fetchDbResults(nextPage);
-                // also scroll on pager click
-                scrollToResults($dbResults);
-                return false;
-              }
+                  // Delegate pager clicks to our AJAX loader (avoid stacking)
+                  $dbResults
+                    .off('click.aiPager')
+                    .on('click.aiPager', 'a', function (e) {
+                      var href = this.getAttribute('href') || '';
+                      if (
+                        href.indexOf('page=') !== -1 ||
+                        $(this).closest('.pager, .pagination, .views-pager').length
+                      ) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        var nextPage = getPageFromHref(href);
+                        fetchDbResults(nextPage);
+                        // also scroll on pager click
+                        scrollToResults($dbResults);
+                        return false;
+                      }
+                    });
+                } else {
+                  $dbResults.html('<p>No database results found.</p>');
+                }
+              },
+              error: function () {
+                $dbResults.html('<p>Error loading database results.</p>');
+              },
             });
-        } else {
-          $dbResults.html('<p>No database results found.</p>');
-        }
-      },
-      error: function () {
-        $dbResults.html('<p>Error loading database results.</p>');
-      },
-    });
-  }
+          }
 
           if (streamVal) {
             try {

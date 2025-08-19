@@ -46,31 +46,14 @@ class SearchResponseBlock extends BlockBase implements ContainerFactoryPluginInt
           [$view_id, $display_id] = $view_parts;
           $plugin_id = "views_block:{$view_id}-{$display_id}";
 
-          $plugin_id = "views_block:{$view_id}-{$display_id}";
-
-          try {
-            $plugin_block = \Drupal::service('plugin.manager.block')->createInstance($plugin_id, []);
-            $views_build = $plugin_block->build();
-            // Wrap to ensure attributes are applied to a container element.
-            $build['db_results'] = [
-              '#type' => 'container',
-              '#attributes' => [
-                'id' => 'ai-db-results-block',
-                'class' => ['ai-db-results-block'],
-              ],
-              '#weight' => 100,
-              'content' => $views_build,
-            ];
-          }
-          catch (\Throwable $e) {
-            \Drupal::logger('ai_search_block')->warning(
-              'Failed to build DB results view "@plugin": @msg',
-              [
-                '@plugin' => $plugin_id,
-                '@msg'    => $e->getMessage(),
-              ]
-            );
-          }
+          $plugin_block = \Drupal::service('plugin.manager.block')->createInstance($plugin_id, [
+            // Optional per-block settings; leave empty to use display defaults.
+          ]);
+          $views_build = $plugin_block->build();
+          // Wrap with a known ID so JS can find the exposed form reliably.
+          $views_build['#attributes']['id'] = 'ai-db-results-block';
+          // Ensure Views' own AJAX/cache metadata is preserved.
+          $build['db_results'] = $views_build + ['#weight' => 100];
         }
       }
 
