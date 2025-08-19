@@ -176,39 +176,26 @@
           $resultsBlock.html($loader);
           $dbResults.empty();
 
-<<<<<<< HEAD
           // Dispatch loading status
           dispatchStatusEvent('loading', { form: $form[0] });
 
           // Retrieve form values.
-=======
->>>>>>> f7bf210 (add view to response)
           var queryVal = $form.find('[data-drupal-selector="edit-query"]').val() || '';
           var streamVal = $form.find('[data-drupal-selector="edit-stream"]').val() === 'true';
           var blockIdVal = $form.find('[data-drupal-selector="edit-block-id"]').val() || '';
 
-          // Track the current in-flight DB request so we can cancel it between pages/searches.
-          var currentDbRequest = null;
           function fetchDbResults(page) {
             if (typeof page === 'undefined') page = 0;
 
-            // Cancel any in-flight request
-            if (currentDbRequest && currentDbRequest.readyState !== 4) {
-              currentDbRequest.abort();
-            }
-
             $dbResults.html('<p class="loading_text">Loading database results...</p>');
 
-            currentDbRequest = $.ajax({
-              url:
-                (drupalSettings.ai_search_block &&
-                  drupalSettings.ai_search_block.db_results_url) ||
-                '/ai-search-block/db-results',
+            $.ajax({
+              url: (drupalSettings.ai_search_block && drupalSettings.ai_search_block.db_results_url) || '/ai-search-block/db-results',
               type: 'POST',
               data: {
                 query: queryVal,
                 block_id: blockIdVal,
-                page: page,
+                page: page
               },
               success: function (data) {
                 if (data && data.html) {
@@ -221,9 +208,7 @@
                   if (!$('link[href*="views-responsive-grid.css"]').length) {
                     var link = document.createElement('link');
                     link.rel = 'stylesheet';
-                    link.href =
-                      drupalSettings.path.baseUrl +
-                      'core/modules/views/css/views-responsive-grid.css';
+                    link.href = drupalSettings.path.baseUrl + 'core/modules/views/css/views-responsive-grid.css';
                     document.head.appendChild(link);
                   }
 
@@ -240,31 +225,26 @@
                   scrollToResults($dbResults);
 
                   // Delegate pager clicks to our AJAX loader (avoid stacking)
-                  $dbResults
-                    .off('click.aiPager')
-                    .on('click.aiPager', 'a', function (e) {
-                      var href = this.getAttribute('href') || '';
-                      if (
-                        href.indexOf('page=') !== -1 ||
-                        $(this).closest('.pager, .pagination, .views-pager').length
-                      ) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        e.stopImmediatePropagation();
-                        var nextPage = getPageFromHref(href);
-                        fetchDbResults(nextPage);
-                        // also scroll on pager click
-                        scrollToResults($dbResults);
-                        return false;
-                      }
-                    });
+                  $dbResults.off('click.aiPager').on('click.aiPager', 'a', function (e) {
+                    var href = this.getAttribute('href') || '';
+                    if (href.indexOf('page=') !== -1 || $(this).closest('.pager, .pagination, .views-pager').length) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.stopImmediatePropagation();
+                      var nextPage = getPageFromHref(href);
+                      fetchDbResults(nextPage);
+                      // also scroll on pager click
+                      scrollToResults($dbResults);
+                      return false;
+                    }
+                  });
                 } else {
                   $dbResults.html('<p>No database results found.</p>');
                 }
               },
               error: function () {
                 $dbResults.html('<p>Error loading database results.</p>');
-              },
+              }
             });
           }
 
@@ -311,7 +291,6 @@
                       Drupal.attachBehaviors($suffixText[0]);
                       $suffixText.show();
                     }
-<<<<<<< HEAD
                     // Dispatch done status
                     dispatchStatusEvent('done', { response: joined, form: $form[0] });
                   } else if (xhr.status === 500) {
@@ -329,17 +308,10 @@
                     } catch (e) {
                       console.error('Error parsing 500 response:', e);
                     }
-=======
-                    fetchDbResults();
-                  } else if (xhr.status === 500) {
-                    $resultsBlock.html('An error happened.');
-                    $dbResults.empty();
->>>>>>> f7bf210 (add view to response)
                   }
                 }
               };
 
-<<<<<<< HEAD
               // Send the streaming request.
               xhr.send(
                 JSON.stringify({
@@ -351,16 +323,6 @@
             } catch (e) {
               console.error('XHR error:', e);
               dispatchStatusEvent('error', { error: e, form: $form[0] });
-=======
-              xhr.send(JSON.stringify({
-                query: queryVal,
-                stream: streamVal,
-                block_id: blockIdVal
-              }));
-            } catch (e) {
-              console.error('XHR error:', e);
-              $dbResults.empty();
->>>>>>> f7bf210 (add view to response)
             }
           } else {
             $.post(
@@ -374,10 +336,7 @@
                 if (data && data.response) {
                   $resultsBlock.html(data.response);
                 }
-<<<<<<< HEAD
                 // Set log Id if available.
-=======
->>>>>>> f7bf210 (add view to response)
                 if (data && data.log_id) {
                   drupalSettings.ai_search_block.logId = data.log_id;
                 }
@@ -386,7 +345,6 @@
                   Drupal.attachBehaviors($suffixText[0]);
                 }
                 submitButton.prop('disabled', false);
-<<<<<<< HEAD
                 dispatchStatusEvent('done', { response: data, form: $form[0] });
               }
             ).fail(function (jqXHR) {
@@ -394,14 +352,6 @@
               console.error('Error on non-streaming request');
               dispatchStatusEvent('error', { error: jqXHR.responseText, form: $form[0] });
             }).always(function() {
-=======
-                fetchDbResults();
-              }
-            ).fail(function () {
-              $resultsBlock.html('An error happened.');
-              $dbResults.empty();
-            }).always(function () {
->>>>>>> f7bf210 (add view to response)
               submitButton.prop('disabled', false);
             });
           }
@@ -412,7 +362,3 @@
     }
   };
 })(jQuery, Drupal, drupalSettings, once);
-<<<<<<< HEAD
-
-=======
->>>>>>> f7bf210 (add view to response)
