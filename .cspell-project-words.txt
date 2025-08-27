@@ -4,3 +4,4 @@ jqxhr
 preprompt
 gte
 qwen
+blacklist
