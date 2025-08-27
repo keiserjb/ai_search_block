@@ -1,6 +1,14 @@
 (function ($, Drupal, drupalSettings, once) {
   'use strict';
 
+  // Utility to dispatch custom status events
+  function dispatchStatusEvent(status, extra) {
+    var event = new CustomEvent('ai-search-status', {
+      detail: Object.assign({ status: status }, extra || {})
+    });
+    document.dispatchEvent(event);
+  }
+
   Drupal.behaviors.aiSearchBlock = {
     attach: function (context, settings) {
       // Attach the submit handler only once per form.
@@ -23,8 +31,8 @@
 
         // Determine loading message and create a reusable loader element.
         var loadingMsg = drupalSettings.ai_search_block && drupalSettings.ai_search_block.loading_text
-            ? drupalSettings.ai_search_block.loading_text
-            : 'Loading...';
+          ? drupalSettings.ai_search_block.loading_text
+          : 'Loading...';
         var $loader = $('<p class="loading_text"><span class="loader"></span>' + loadingMsg + '</p>');
 
         $form.on('submit', function (event) {
@@ -35,6 +43,9 @@
 
           // Show the loader initially.
           $resultsBlock.html($loader);
+
+          // Dispatch loading status
+          dispatchStatusEvent('loading', { form: $form[0] });
 
           // Retrieve form values.
           var queryVal = $form.find('[data-drupal-selector="edit-query"]').val() || '';
@@ -79,6 +90,9 @@
                 // Overwrite the full output (letting browsers fix broken HTML)
                 // and re-append the loader.
                 $resultsBlock.html(joined).append($loader);
+
+                // Dispatch streaming progress status
+                dispatchStatusEvent('streaming', { progress: joined.length, form: $form[0] });
               };
 
               xhr.onreadystatechange = function () {
@@ -92,11 +106,14 @@
                       Drupal.attachBehaviors($suffixText[0]);
                       $suffixText.show();
                     }
-                    // (Optional) If needed, update log Id from final response here.
+                    // Dispatch done status
+                    dispatchStatusEvent('done', { response: joined, form: $form[0] });
                   } else if (xhr.status === 500) {
                     $resultsBlock.html('An error happened.');
                     console.error('Error response:', xhr.responseText);
                     submitButton.prop('disabled', false);
+                    // Dispatch error status
+                    dispatchStatusEvent('error', { error: xhr.responseText, form: $form[0] });
                     try {
                       var parsedError = JSON.parse(xhr.responseText);
                       if (parsedError.response && parsedError.response.answer_piece) {
@@ -112,41 +129,44 @@
 
               // Send the streaming request.
               xhr.send(
-                  JSON.stringify({
-                    query: queryVal,
-                    stream: streamVal,
-                    block_id: blockIdVal
-                  })
+                JSON.stringify({
+                  query: queryVal,
+                  stream: streamVal,
+                  block_id: blockIdVal
+                })
               );
             } catch (e) {
               console.error('XHR error:', e);
+              dispatchStatusEvent('error', { error: e, form: $form[0] });
             }
           } else {
             // Non-streaming: use jQuery.post.
             $.post(
-                drupalSettings.ai_search_block.submit_url,
-                {
-                  query: queryVal,
-                  stream: streamVal,
-                  block_id: blockIdVal
-                },
-                function (data) {
-                  if (data && data.response) {
-                    $resultsBlock.html(data.response);
-                  }
-                  // Set log Id if available.
-                  if (data && data.log_id) {
-                    drupalSettings.ai_search_block.logId = data.log_id;
-                  }
-                  if ($suffixText.length) {
-                    $suffixText.html(drupalSettings.ai_search_block.suffix_text).show();
-                    Drupal.attachBehaviors($suffixText[0]);
-                  }
-                  submitButton.prop('disabled', false);
+              drupalSettings.ai_search_block.submit_url,
+              {
+                query: queryVal,
+                stream: streamVal,
+                block_id: blockIdVal
+              },
+              function (data) {
+                if (data && data.response) {
+                  $resultsBlock.html(data.response);
                 }
-            ).fail(function () {
+                // Set log Id if available.
+                if (data && data.log_id) {
+                  drupalSettings.ai_search_block.logId = data.log_id;
+                }
+                if ($suffixText.length) {
+                  $suffixText.html(drupalSettings.ai_search_block.suffix_text).show();
+                  Drupal.attachBehaviors($suffixText[0]);
+                }
+                submitButton.prop('disabled', false);
+                dispatchStatusEvent('done', { response: data, form: $form[0] });
+              }
+            ).fail(function (jqXHR) {
               $resultsBlock.html('An error happened.');
               console.error('Error on non-streaming request');
+              dispatchStatusEvent('error', { error: jqXHR.responseText, form: $form[0] });
             }).always(function() {
               submitButton.prop('disabled', false);
             });
@@ -158,3 +178,4 @@
     }
   };
 })(jQuery, Drupal, drupalSettings, once);
+
