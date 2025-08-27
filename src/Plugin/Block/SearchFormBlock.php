@@ -100,7 +100,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
       'llm_temp' => 0.5,
       'llm_model' => NULL,
       'aggregated_llm' => NULL,
-      'access_check' => 'post',
+      'access_check' => 'false',
       'context_threshold' => 0.1,
       'block_enabled' => FALSE,
       'block_words' => 'prompt',
