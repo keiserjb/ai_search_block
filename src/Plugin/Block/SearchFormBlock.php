@@ -354,6 +354,7 @@ Example response 2:
       <em>[date_yesterday]</em> - Yesterday.<br>
       <em>[date_tomorrow]</em> - Tomorrow.<br>
       <em>[time_now]</em> - The current time.<br>
+      <code>-----! SPLIT !-----</code> | Use this separator to split the prompt into SYSTEM (<em>above</em>) vs USER prompt (<em>below</em>). Useful for smaller models.<br>
       '),
       '#default_value' => $this->configuration['aggregated_llm'] ?? $default_prompt,
       '#attributes' => [

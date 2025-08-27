@@ -305,9 +305,19 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $config[$key] = $val;
     }
     $this->moduleHandler->alter('ai_search_block_prompt', $message);
-    $input = new ChatInput([
-      new ChatMessage('user', $message),
-    ]);
+
+    // Check if we need to split the message into system and user parts.
+    $messages = [];
+    if (strpos($message, '-----! SPLIT !-----') !== FALSE) {
+      [$message_system, $message_user] = explode('---! SPLIT !---', $message, 2);
+      $messages[] = new ChatMessage('system', trim($message_system));
+      $messages[] = new ChatMessage('user', trim($message_user));
+    }
+    else {
+      $messages[] = new ChatMessage('user', $message);
+    }
+
+    $input = new ChatInput($messages);
 
     if ($this->configuration['stream']) {
       $provider->streamedOutput();
