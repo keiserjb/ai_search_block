@@ -75,9 +75,10 @@ class SearchForm extends FormBase {
         $properties = [
           '#rows' => 7,
           '#cols' => 100,
-          '#wysiwyg' => false,
+          '#wysiwyg' => FALSE,
         ];
         break;
+        
       default:
         $properties = [
           '#rows' => 1,
