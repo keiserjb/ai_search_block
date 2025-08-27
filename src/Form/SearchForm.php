@@ -69,8 +69,23 @@ class SearchForm extends FormBase {
         'class' => ['ai-search-form-wrapper'],
       ],
     ];
+    $input_field = $search_block_config['input_field'] ?? 'textfield';
+    switch ($input_field) {
+      case 'textarea':
+        $properties = [
+          '#rows' => 7,
+          '#cols' => 100,
+          '#wysiwyg' => false,
+        ];
+        break;
+      default:
+        $properties = [
+          '#rows' => 1,
+        ];
+        break;
+    }
     $form['wrapper']['query'] = [
-      '#type' => 'textfield',
+      '#type' => $input_field,
       '#title' => $this->t('Ask me a question'),
       '#title_display' => 'invisible',
       '#required' => TRUE,
@@ -79,9 +94,7 @@ class SearchForm extends FormBase {
         'class' => ['chat-form-query'],
         'autocomplete' => 'off',
       ],
-
-      '#rows' => 1,
-    ];
+    ] + $properties;
 
     $form['wrapper']['submit'] = [
       '#type' => 'submit',

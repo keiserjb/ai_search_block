@@ -84,6 +84,7 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
    */
   public function defaultConfiguration(): array {
     return [
+      'input_field' => 'textfield',
       'placeholder' => 'Ask me a question about your subject here!',
       'submit_text' => 'Ask question',
       'loading_text' => 'Loading',
@@ -116,6 +117,16 @@ class SearchFormBlock extends BlockBase implements ContainerFactoryPluginInterfa
     $form['form_config'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('Form config'),
+    ];
+    $form['form_config']['input_field'] = [
+      '#type' => 'radios',
+      '#title' => $this->t('Input type in the form'),
+      '#options' => [
+        'textfield' => $this->t('Textfield'),
+        'textarea' => $this->t('Textarea'),
+      ],
+      '#description' => $this->t('Choose which input field must be used to enter the question.'),
+      '#default_value' => $this->configuration['input_field'],
     ];
     $form['form_config']['placeholder'] = [
       '#type' => 'textfield',
@@ -432,6 +443,7 @@ Example response 2:
    * {@inheritdoc}
    */
   public function blockSubmit($form, FormStateInterface $form_state) {
+    $this->configuration['input_field'] = $form_state->getValue('form_config')['input_field'];
     $this->configuration['placeholder'] = $form_state->getValue('form_config')['placeholder'];
     $this->configuration['submit_text'] = $form_state->getValue('form_config')['submit_text'];
     $this->configuration['stream'] = $form_state->getValue('form_config')['stream'];
