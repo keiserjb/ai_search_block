@@ -464,7 +464,7 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       $query = $index->query([
         'limit' => $this->configuration['max_results'],
       ]);
-      $query->setOption('search_api_bypass_access', ($this->configuration['access_check'] == 'false'));
+      $query->setOption('search_api_bypass_access', TRUE);
       $query->setOption('search_api_ai_get_chunks_result', 'rendered');
 
       // Apply the prefix template to the query string if enabled.
@@ -517,8 +517,34 @@ class AiSearchBlockHelper implements ContainerFactoryPluginInterface {
       if ((float) $this->configuration['score_threshold'] > $result->getScore()) {
         continue;
       }
+
+      // Resolve the entity behind the hit (works for both 'chunks' and 'node' modes
+      // as long as drupal_entity_id is present in extra data).
+      $entity_string = (string) $result->getExtraData('drupal_entity_id');
+      if ($entity_string === '') {
+        // Do not surface hits that cannot be mapped back to an entity.
+        continue;
+      }
+      // Parse "entity:TYPE/ID[:LANG]" safely.
+      if (!preg_match('/^entity:([a-z0-9_]+)\/(\d+)(?::([a-z0-9_\-]+))?$/i', $entity_string, $m)) {
+        continue;
+      }
+      [$entity_type, $entity_id] = [$m[1], (int) $m[2]];
+      if (!$this->entityTypeManager->hasDefinition($entity_type)) {
+        continue;
+      }
+      $entity = $this->entityTypeManager->getStorage($entity_type)->load($entity_id);
+      // Only include if the current user may view it.
+      if (!$entity || !$entity->access('view', $this->currentUser)) {
+        continue;
+      }
+      // Optional belt-and-suspenders for nodes:
+      if ($entity_type === 'node' && method_exists($entity, 'isPublished') && !$entity->isPublished()) {
+        continue;
+      }
       $result_items[] = $result;
     }
+
     if (!empty($result_items)) {
       return $this->fullEntityCheck($result_items, $query, $rag_database);
     }
