@@ -1,7 +1,7 @@
 <div id="ai-search-block-response">
-  {{ rendered_form }}
+  {% if rendered_form %}{{ rendered_form }}{% endif %}
   <div class="ai-search-block-output">{{ output }}</div>
-  <div class="suffix_text"></div>
+  <div class="suffix_text">{{ suffix_text|raw }}</div>
 </div>
 
 

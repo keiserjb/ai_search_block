@@ -13,32 +13,104 @@
     attach: function (context, settings) {
       once('aiSearchForm', '.ai-search-block-form', context).forEach(function (formElem) {
         var $form = $(formElem);
+        console.log('AI Search: Attaching to form:', $form);
 
-        var $resultsBlock = $('#ai-search-block-response .ai-search-block-output');
-        var $suffixText = $('#ai-search-block-response .suffix_text');
-        var $dbResults = $('#ai-search-block-db-results');
-        if (!$dbResults.length) {
-          $dbResults = $('<div id="ai-search-block-db-results"></div>');
-          $resultsBlock.after($dbResults);
-        } else {
-          $dbResults.empty();
+        // First, try to find the results container
+        function findResultsContainer() {
+          var $container = $('#ai-search-block-response');
+          if ($container.length) {
+            console.log('AI Search: Found results container');
+            return $container;
+          }
+          return null;
         }
 
-        if (!$resultsBlock.length) {
-          console.warn('AI Search: Could not find a results block relative to the form.');
+        // Helper to initialize the results blocks
+        function initializeResults($container) {
+          var $resultsBlock = $container.find('.ai-search-block-output');
+          var $suffixText = $container.find('.suffix_text');
+          var $dbResults = $('#ai-search-block-db-results');
+
+          console.log('AI Search: Results structure:', {
+            container: $container.length,
+            output: $resultsBlock.length,
+            suffix: $suffixText.length,
+            dbResults: $dbResults.length
+          });
+
+          if (!$dbResults.length) {
+            $dbResults = $('<div id="ai-search-block-db-results"></div>');
+            $resultsBlock.after($dbResults);
+          } else {
+            $dbResults.empty();
+          }
+
+          return {
+            resultsBlock: $resultsBlock,
+            suffixText: $suffixText,
+            dbResults: $dbResults
+          };
+        }
+
+        // Try to find results container, if not found, wait for it
+        var $resultsContainer = findResultsContainer();
+        if (!$resultsContainer) {
+          console.log('AI Search: Waiting for results container...');
+          var observer = new MutationObserver(function(mutations) {
+            $resultsContainer = findResultsContainer();
+            if ($resultsContainer) {
+              observer.disconnect();
+              console.log('AI Search: Results container found after waiting');
+              setupForm($resultsContainer);
+            }
+          });
+
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true
+          });
           return;
         }
-        if ($suffixText.length) {
-          $suffixText.hide();
-        }
 
-        // One-time CSS: hide exposed form + remove visible focus ring on container.
-        if (!$('style#ai-hide-exposed').length) {
-          $('<style id="ai-hide-exposed">\
-#ai-search-block-db-results .views-exposed-form{display:none!important}\
-#ai-search-block-db-results:focus{outline:0!important; box-shadow:none!important}\
-</style>').appendTo('head');
-        }
+        setupForm($resultsContainer);
+
+        function setupForm($container) {
+          var results = initializeResults($container);
+          var $resultsBlock = results.resultsBlock;
+          var $suffixText = results.suffixText;
+          var $dbResults = results.dbResults;
+
+          if (!$resultsBlock.length) {
+            console.warn('AI Search: Could not find output block within results container');
+            return;
+          }
+
+          // Rest of your existing form setup code...
+          if ($suffixText.length) {
+            $suffixText.hide();
+          }
+
+          // One-time CSS: hide exposed form + remove visible focus ring on container.
+          if (!$('style#ai-hide-exposed').length) {
+            $('<style id="ai-hide-exposed">\
+    #ai-search-block-db-results .views-exposed-form,\
+    #ai-db-results-block .views-exposed-form,\
+    .ai-db-results .views-exposed-form,\
+    #ai-search-block-db-results .view-empty,\
+    #ai-db-results-block .view-empty,\
+    .ai-db-results .view-empty { display: none !important; }\
+    #ai-search-block-db-results:focus,\
+    #ai-db-results-block:focus,\
+    .ai-db-results:focus { outline: 0 !important; box-shadow: none !important; }\
+  </style>').appendTo('head');
+          }
+
+          // ... rest of your existing code ...
+
+          // Move your form submit handler here
+          $form.on('submit', function(event) {
+            // Your existing submit handler code...
+
 
         var loadingMsg = drupalSettings.ai_search_block && drupalSettings.ai_search_block.loading_text
           ? drupalSettings.ai_search_block.loading_text
@@ -167,7 +239,7 @@
 
         // ---------------- End Helpers ------------------
 
-        $form.on('submit', function (event) {
+
           event.preventDefault();
 
           const submitButton = $form.find('[data-drupal-selector="edit-submit"]');
@@ -181,74 +253,84 @@
 
           // Retrieve form values.
           var queryVal = $form.find('[data-drupal-selector="edit-query"]').val() || '';
+          console.log('AI Search: Query:', queryVal);
           var streamVal = $form.find('[data-drupal-selector="edit-stream"]').val() === 'true';
           var blockIdVal = $form.find('[data-drupal-selector="edit-block-id"]').val() || '';
 
           function fetchDbResults(page) {
-            if (typeof page === 'undefined') page = 0;
+          if (typeof page === 'undefined') page = 0;
+          console.log('AI Search: Fetching DB results, page:', page);
 
-            $dbResults.html('<p class="loading_text">Loading database results...</p>');
-
-            $.ajax({
-              url: (drupalSettings.ai_search_block && drupalSettings.ai_search_block.db_results_url) || '/ai-search-block/db-results',
-              type: 'POST',
-              data: {
-                query: queryVal,
-                block_id: blockIdVal,
-                page: page
-              },
-              success: function (data) {
-                if (data && data.html) {
-                  $dbResults.html(data.html);
-
-                  // Kill Views' own AJAX class if it slipped in.
-                  $dbResults.find('a.use-ajax').removeClass('use-ajax');
-
-                  // Ensure responsive grid CSS is present (one-time)
-                  if (!$('link[href*="views-responsive-grid.css"]').length) {
-                    var link = document.createElement('link');
-                    link.rel = 'stylesheet';
-                    link.href = drupalSettings.path.baseUrl + 'core/modules/views/css/views-responsive-grid.css';
-                    document.head.appendChild(link);
-                  }
-
-                  // Reattach behaviors for markup (tooltips, etc.)
-                  Drupal.attachBehaviors($dbResults[0]);
-
-                  // Keep pager UI correct for the page we just requested
-                  fixPager($dbResults, page || 0, queryVal);
-
-                  // Hide the exposed filter reliably
-                  hideExposedForm($dbResults);
-
-                  // Scroll back to the top of results
-                  scrollToResults($dbResults);
-
-                  // Delegate pager clicks to our AJAX loader (avoid stacking)
-                  $dbResults.off('click.aiPager').on('click.aiPager', 'a', function (e) {
-                    var href = this.getAttribute('href') || '';
-                    if (href.indexOf('page=') !== -1 || $(this).closest('.pager, .pagination, .views-pager').length) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.stopImmediatePropagation();
-                      var nextPage = getPageFromHref(href);
-                      fetchDbResults(nextPage);
-                      // also scroll on pager click
-                      scrollToResults($dbResults);
-                      return false;
-                    }
-                  });
-                } else {
-                  $dbResults.html('<p>No database results found.</p>');
-                }
-              },
-              error: function () {
-                $dbResults.html('<p>Error loading database results.</p>');
-              }
-            });
+          if (!drupalSettings.ai_search_block || !drupalSettings.ai_search_block.enable_database_results) {
+            console.log('AI Search: DB results disabled in settings');
+            return;
           }
 
-          if (streamVal) {
+          $dbResults.html('<p class="loading_text">Loading database results...</p>');
+
+          $.ajax({
+            url: (drupalSettings.ai_search_block && drupalSettings.ai_search_block.db_results_url) || '/ai-search-block/db-results',
+            type: 'POST',
+            data: {
+              query: queryVal,
+              block_id: blockIdVal,
+              page: page
+            },
+            success: function (data) {
+              console.log('AI Search: DB results received:', data);
+
+              if (data && data.html) {
+                $dbResults.html(data.html);
+
+                // Kill Views' own AJAX class if it slipped in.
+                $dbResults.find('a.use-ajax').removeClass('use-ajax');
+
+                // Ensure responsive grid CSS is present (one-time)
+                if (!$('link[href*="views-responsive-grid.css"]').length) {
+                  var link = document.createElement('link');
+                  link.rel = 'stylesheet';
+                  link.href = drupalSettings.path.baseUrl + 'core/modules/views/css/views-responsive-grid.css';
+                  document.head.appendChild(link);
+                }
+
+                // Reattach behaviors for markup (tooltips, etc.)
+                Drupal.attachBehaviors($dbResults[0]);
+
+                // Keep pager UI correct for the page we just requested
+                fixPager($dbResults, page || 0, queryVal);
+
+                // Hide the exposed filter reliably
+                hideExposedForm($dbResults);
+
+                // Scroll back to the top of results
+                scrollToResults($dbResults);
+
+                // Delegate pager clicks to our AJAX loader (avoid stacking)
+                $dbResults.off('click.aiPager').on('click.aiPager', 'a', function (e) {
+                  var href = this.getAttribute('href') || '';
+                  if (href.indexOf('page=') !== -1 || $(this).closest('.pager, .pagination, .views-pager').length) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    var nextPage = getPageFromHref(href);
+                    fetchDbResults(nextPage);
+                    // also scroll on pager click
+                    scrollToResults($dbResults);
+                    return false;
+                  }
+                });
+              } else {
+                $dbResults.html('<p>No database results found.</p>');
+              }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+              console.error('AI Search: DB results error:', textStatus, errorThrown);
+              $dbResults.html('<p>Error loading database results.</p>');
+            }
+          });
+        }
+
+        if (streamVal) {
             try {
               var xhr = new XMLHttpRequest();
               xhr.open('POST', drupalSettings.ai_search_block.submit_url, true);
@@ -293,6 +375,12 @@
                     }
                     // Dispatch done status
                     dispatchStatusEvent('done', { response: joined, form: $form[0] });
+
+                    // Always try to fetch DB results after successful streaming
+                    if (drupalSettings.ai_search_block && drupalSettings.ai_search_block.enable_database_results) {
+                      console.log('AI Search: Fetching DB results after stream');
+                      fetchDbResults();
+                    }
                   } else if (xhr.status === 500) {
                     $resultsBlock.html('An error happened.');
                     console.error('Error response:', xhr.responseText);
@@ -352,13 +440,18 @@
               console.error('Error on non-streaming request');
               dispatchStatusEvent('error', { error: jqXHR.responseText, form: $form[0] });
             }).always(function() {
+              if (drupalSettings.ai_search_block && drupalSettings.ai_search_block.enable_database_results) {
+                console.log('AI Search: Fetching DB results after POST');
+                fetchDbResults();
+              }
               submitButton.prop('disabled', false);
             });
           }
 
           return false;
         });
-      });
-    }
-  };
+      }
+    });
+  }
+};
 })(jQuery, Drupal, drupalSettings, once);
